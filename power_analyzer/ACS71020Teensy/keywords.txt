@@ -1,0 +1,6 @@
+ACS71020 	KEYWORD1
+
+readReg		KEYWORD2
+writeEEPROM	KEYWORD2
+ConvertUnsignedFixedPoint	KEYWORD2
+ConvertSignedFixedPoint		KEYWORD2
