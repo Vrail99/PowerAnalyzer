@@ -1,6 +1,4 @@
-# Bachelorarbeit Sebastian Zisch
-# Implementierung eines Evaluierungsboards für den ACS71020 Leistungsmesschip
-# in Kombination mit einem Teensy 4
+# GUI for the Power Analyzer based on an ACS71020 Power Monitoring IC
 
 
 # Class main
@@ -30,6 +28,7 @@ class mainWindow(tk.Tk):
         # Window Setup
         tk.Tk.__init__(self)
         version = "1.0"
+
         # Height and width for Windows
         self.width = 600
         self.height = 450
