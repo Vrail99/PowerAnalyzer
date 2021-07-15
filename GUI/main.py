@@ -2,6 +2,7 @@
 
 
 # Class main
+from os import set_blocking
 from tkinter.constants import LEFT
 import serial_device
 import tkinter as tk
@@ -36,7 +37,8 @@ class mainWindow(tk.Tk):
 
         """
         # Window Setup
-        tk.Tk.__init__(self)
+        super().__init__()
+
         self.version = "1.0"
 
         # Height and width for Windows
@@ -160,21 +162,21 @@ class mainWindow(tk.Tk):
         self.wTimeout = tk.IntVar(self, 2)
         mOpt.add_separator()
         mReadTimeout.add_radiobutton(
-            label="0s", value=0, variable=self.rTimeout, command=self.setReadTimeout)
+            label="0s", value=0, variable=self.rTimeout, command=self._setReadTimeout)
         mReadTimeout.add_radiobutton(
-            label="1s", value=1, variable=self.rTimeout, command=self.setReadTimeout)
+            label="1s", value=1, variable=self.rTimeout, command=self._setReadTimeout)
         mReadTimeout.add_radiobutton(
-            label="2s", value=2, variable=self.rTimeout, command=self.setReadTimeout)
+            label="2s", value=2, variable=self.rTimeout, command=self._setReadTimeout)
         mReadTimeout.add_radiobutton(
-            label="5s", value=5, variable=self.rTimeout, command=self.setReadTimeout)
+            label="5s", value=5, variable=self.rTimeout, command=self._setReadTimeout)
         mWriteTimeout.add_radiobutton(
-            label="0s", value=0, variable=self.wTimeout, command=self.setWriteTimeout)
+            label="0s", value=0, variable=self.wTimeout, command=self._setWriteTimeout)
         mWriteTimeout.add_radiobutton(
-            label="1s", value=1, variable=self.wTimeout, command=self.setWriteTimeout)
+            label="1s", value=1, variable=self.wTimeout, command=self._setWriteTimeout)
         mWriteTimeout.add_radiobutton(
-            label="2s", value=2, variable=self.wTimeout, command=self.setWriteTimeout)
+            label="2s", value=2, variable=self.wTimeout, command=self._setWriteTimeout)
         mWriteTimeout.add_radiobutton(
-            label="5s", value=5, variable=self.wTimeout, command=self.setWriteTimeout)
+            label="5s", value=5, variable=self.wTimeout, command=self._setWriteTimeout)
 
         mOpt.add_separator()
 
@@ -195,11 +197,11 @@ class mainWindow(tk.Tk):
 
         self["menu"] = mBar
 
-    def setReadTimeout(self) -> None:
+    def _setReadTimeout(self) -> None:
         """Read timeout of serial bus. Reads the value from the top Menu"""
         self.sBus.setReadTimeout(self.rTimeout.get())
 
-    def setWriteTimeout(self) -> None:
+    def _setWriteTimeout(self) -> None:
         """Write timeout of serial bus. Reads the value from menu"""
         self.sBus.setWriteTimeout(self.wTimeout.get())
 
@@ -234,14 +236,14 @@ class mainWindow(tk.Tk):
             self.pages[SettingsPage].writeBtn["state"] = tk.NORMAL
 
     def _openScope(self):
-        print("Opening Scope")
-        # Create a New Window for Scope Page
-        self.scopeWindow = tk.Toplevel(self, background='#d9d9d9')
-        self.liveScope = ScopeWindow(self.scopeWindow, self.sBus)
-        self.scopeWindow.protocol("WM_DELETE_WINDOW", self.endScopeProgram)
+        """Opens the Oscilloscope-Window"""
+        self.scopeWindow = ScopeWindow(self, self.sBus)
+        self.scopeWindow.focus_set()
+        self.scopeWindow.protocol("WM_DELETE_WINDOW", self._endScopeProgram)
+        self.scopeWindow.attributes("-topmost", 'true')
 
-    def endScopeProgram(self):
-        self.liveScope._stopCodes()
+    def _endScopeProgram(self):
+        self.scopeWindow._stopCodes()
         self.scopeWindow.destroy()
 
     #
@@ -322,7 +324,7 @@ class mainWindow(tk.Tk):
 
     def endProgram(self):
         try:
-            self.pages[LivePage].endScopeProgram()
+            self.pages[LivePage]._endScopeProgram()
         except:
             pass
         if (self.getSerialBus().deviceOpen()):
@@ -332,6 +334,11 @@ class mainWindow(tk.Tk):
         #    self._saveSettings()
 
         self.destroy()
+
+
+class topLevel(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
 
 
 app = None
