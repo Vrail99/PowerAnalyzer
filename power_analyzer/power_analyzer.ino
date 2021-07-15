@@ -10,6 +10,9 @@ Date: 210417
 #include <TimeLib.h>          //Time Library for Real-Time Clock
 #include <math.h>
 
+//Uncomment for Debug messages on Serial Port 2
+//#define DEBUG
+
 //Defines for GPIO
 #define ACS_CS 10              //Chip Select for the ACS Chip
 #define ACS_SPI_SPEED 10000000 //SPI Speed setting for the ACS Chip (10 Mhz)
@@ -490,9 +493,11 @@ void startSamplingFFT()
   while (zcd != 1)
     zcd = ACSchip.readReg(0x2D) & 0x1;
   bool err = smplTimer.begin(getSamples_FFT, FFTSAMPLERATE);
-  if (!err)
-    SerialUSB1.println("Error starting Timer");
-  SerialUSB1.println("Started FFT Sample Timer");
+  #ifdef DEBUG
+    if (!err)
+      SerialUSB1.println("Error starting Timer");
+    SerialUSB1.println("Started FFT Sample Timer");
+  #endif
 }
 
 // Start normal Sampling for PC calculation
@@ -580,7 +585,9 @@ void streamSampling()
 void stopSampling()
 {
   smplTimer.end();
-  SerialUSB1.println("Stopped Sample Timer");
+  #ifdef DEBUG
+    SerialUSB1.println("Stopped Sample Timer");
+  #endif
 }
 ////////////////////////////////////////////////////////////////////////////////
 // Command Input
@@ -774,11 +781,13 @@ void getCommand()
       }
       else if (c2 == 'i')
       { //Connection test
-        Serial.printf("Teensy Connected\n");
+        Serial.print("tconn\n");
       }
       else if (c2 == 'v') //Ignore voltage detection
       {
-        SerialUSB1.println("Ignoring Voltage Level");
+        #ifdef DEBUG
+          SerialUSB1.println("Ignoring Voltage Level");
+        #endif
         voltage_detected = true;
       }
     }

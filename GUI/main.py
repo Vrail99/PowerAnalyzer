@@ -1,7 +1,9 @@
-# GUI for the Power Analyzer based on an ACS71020 Power Monitoring IC
+"""GUI for the Power Analyzer based on an ACS71020 Power Monitoring IC"""
 
 
 # Class main
+from os import set_blocking
+from tkinter.constants import LEFT
 import serial_device
 import tkinter as tk
 from tkinter import simpledialog
@@ -11,6 +13,7 @@ from tkinter import ttk
 from settingsPage import SettingsPage
 from livePage import LivePage
 from mainPage import MainPage
+from scopePage import ScopeWindow
 
 # Matplot Imports
 from matplotlib import style
@@ -24,89 +27,118 @@ style.use('ggplot')
 
 
 class mainWindow(tk.Tk):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, pages: list, *args, **kwargs) -> None:
+        """Initializes 
+            - the serial bus,
+            - individual pages as classes,
+            - the menu
+
+            and looks for serial ports.
+
+        """
         # Window Setup
-        tk.Tk.__init__(self)
-        version = "1.0"
+        super().__init__()
+
+        self.version = "1.0"
 
         # Height and width for Windows
-        self.width = 600
+        self.width = 680
         self.height = 450
-        assert self.width % 2 == 0
-        assert self.width % 2 == 0
-        self.title("Power Analyzer v." + version)
-
-        # Window Container for Pages
-        pgcont = ttk.Frame(self, relief="raised")  # Registercardcontroller
-        pgcont.pack(fill="x")
-
-        cont = ttk.Frame(self, relief="groove")  # Windowcontroller
-        cont.pack(fill="both", expand=True)
-        cont.grid_columnconfigure(0, weight=1)
-        cont.grid_rowconfigure(0, weight=1)
-        gridform = True  # Window Appearance
-
-        btncont = ttk.Frame(self, relief="raised")  # Buttoncontroller
-        btncont.pack(fill="x")
 
         # Serial Device, serial devices combobox
         self.sBus = serial_device.SerialBus()  # Serial bus instance
         self.allDevices = tk.StringVar()  # Serial devices
 
         # Pages in Frame
-        self.pagenames = (MainPage, LivePage, SettingsPage)
-        self.pages = {}  # Page dictionary
-        for F in self.pagenames:
-            page = F(cont, self)
-            self.pages[F] = page
-            if gridform:
-                page.grid(column=0, row=0, sticky="nsew")
-        if not gridform:
-            self.pages[MainPage].grid(
-                column=0, columnspan=2, row=0, sticky="nsew")
-            self.pages[LivePage].grid(column=0, row=1)
-            self.pages[SettingsPage].grid(column=1, row=1)
+        self.pagenames = pages
+
+        # GUI Setup
+        self._guiSetup(self.pagenames)
 
         # Create Menu
         self._createMenu()
 
+        # Init serial ports
+        self._searchSerialPorts()
+        self._openSerial()
+
+    def _guiSetup(self, pages: list) -> None:
+        """Creates frames, buttons, comboboxes.
+            Adds the pages.
+
+            Keyword Arguments:
+            pages -- list of pages to be added. This list should contain the classes of names
+        """
+
+        self.title("Power Analyzer v." + self.version)
+
+        # Controller for Page Buttons
+        page_contr = ttk.Frame(self, relief="raised")
+        page_contr.pack(fill="x")
+
+        # Window Container for Pages
+        main_cont = ttk.Frame(self, relief="groove")  # Windowcontroller
+        main_cont.pack(fill="both", expand=True)
+        main_cont.grid_columnconfigure(0, weight=1)
+        main_cont.grid_rowconfigure(0, weight=1)
+
+        status_buttons = ttk.Frame(self, relief="raised")  # Buttoncontroller
+        status_buttons.pack(fill="x")
+
         # Top Bar with Tab-Selection
-        self.p1 = ttk.Button(pgcont, text="Main",
-                             command=lambda: self._show_frame(MainPage))
-        self.p2 = ttk.Button(pgcont, text="Live Measurement",
-                             command=lambda: self._show_frame(LivePage))
-        self.p3 = ttk.Button(pgcont, text="EEPROM Settings",
-                             command=lambda: self._show_frame(SettingsPage))
-        self.p1.pack(side="left")
-        self.p2.pack(side="left")
-        self.p3.pack(side="left")
+        b1 = ttk.Button(
+            page_contr, text="Main", command=lambda: self._show_frame(MainPage))
+        b1.pack(side=LEFT)
+        b2 = ttk.Button(
+            page_contr, text="Values", command=lambda: self._show_frame(LivePage))
+        b2.pack(side=LEFT)
+        b3 = ttk.Button(
+            page_contr, text="Settings", command=lambda: self._show_frame(SettingsPage))
+        b3.pack(side=LEFT)
+        self.scopeButton = ttk.Button(
+            page_contr, text="Scope", state='disabled', command=lambda: self._openScope())
+        self.scopeButton.pack(side=LEFT)
 
         # BottomBar with Statuslabel
         self.l_status = ttk.Label(
-            btncont, text="Not connected", width=self.width / 2)
+            status_buttons, text="Not connected", width=self.width / 2)
         self.connbtn = ttk.Button(
-            btncont, text="Connect", command=self._openSerial)
+            status_buttons, text="Connect", command=lambda: self._openSerial())
         self.disconnbtn = ttk.Button(
-            btncont, text="Disconnect", command=self._closeSerial)
-        self.opt = ttk.Combobox(btncont, textvariable=self.allDevices)
+            status_buttons, text="Disconnect", state=tk.DISABLED, command=lambda: self._closeSerial())
+        self.reloadbtn = ttk.Button(
+            status_buttons, text="⟲", command=lambda: self._searchSerialPorts())  # Circle: U+21BA u"\21ba"
+        self.opt = ttk.Combobox(status_buttons, textvariable=self.allDevices)
 
         # Placement of status bar
         self.l_status.pack(side="left")
         self.opt.pack(side="right")
         self.connbtn.pack(side="right")
         self.disconnbtn.pack(side="right")
+        self.reloadbtn.pack(side="right")
 
-        # Only necessary in grid view
-        self._show_frame(MainPage)
-        # Init serial ports
-        self._searchSerialPorts()
-        self._openSerial()
+        # Add pages to the frame
+        self._addPages(main_cont, pages)
 
-    #
-    #   Creating the Menu
-    #
+    def _addPages(self, frame: tk.Frame, pageclasses: list, gridform: bool = False) -> None:
+        self.pages = {}  # Page dictionary
+        for F in pageclasses:
+            page = F(frame, self)
+            self.pages[F] = page
+            if not gridform:
+                page.grid(column=0, row=0, sticky="nsew")
+        if gridform:
+            self.pages[MainPage].grid(
+                column=0, columnspan=2, row=0, sticky="nsew")
+            self.pages[LivePage].grid(column=0, row=1)
+            self.pages[SettingsPage].grid(column=1, row=1)
+        else:
+            # Only necessary in grid view
+            self._show_frame(MainPage)
 
-    def _createMenu(self):
+    def _createMenu(self) -> None:
+        """Creates the menu bar"""
+
         mBar = tk.Menu(self)  # Create Menu
 
         mFile = tk.Menu(mBar, tearoff=0)  # File Menu
@@ -130,21 +162,21 @@ class mainWindow(tk.Tk):
         self.wTimeout = tk.IntVar(self, 2)
         mOpt.add_separator()
         mReadTimeout.add_radiobutton(
-            label="0s", value=0, variable=self.rTimeout, command=self.setReadTimeout)
+            label="0s", value=0, variable=self.rTimeout, command=self._setReadTimeout)
         mReadTimeout.add_radiobutton(
-            label="1s", value=1, variable=self.rTimeout, command=self.setReadTimeout)
+            label="1s", value=1, variable=self.rTimeout, command=self._setReadTimeout)
         mReadTimeout.add_radiobutton(
-            label="2s", value=2, variable=self.rTimeout, command=self.setReadTimeout)
+            label="2s", value=2, variable=self.rTimeout, command=self._setReadTimeout)
         mReadTimeout.add_radiobutton(
-            label="5s", value=5, variable=self.rTimeout, command=self.setReadTimeout)
+            label="5s", value=5, variable=self.rTimeout, command=self._setReadTimeout)
         mWriteTimeout.add_radiobutton(
-            label="0s", value=0, variable=self.wTimeout, command=self.setWriteTimeout)
+            label="0s", value=0, variable=self.wTimeout, command=self._setWriteTimeout)
         mWriteTimeout.add_radiobutton(
-            label="1s", value=1, variable=self.wTimeout, command=self.setWriteTimeout)
+            label="1s", value=1, variable=self.wTimeout, command=self._setWriteTimeout)
         mWriteTimeout.add_radiobutton(
-            label="2s", value=2, variable=self.wTimeout, command=self.setWriteTimeout)
+            label="2s", value=2, variable=self.wTimeout, command=self._setWriteTimeout)
         mWriteTimeout.add_radiobutton(
-            label="5s", value=5, variable=self.wTimeout, command=self.setWriteTimeout)
+            label="5s", value=5, variable=self.wTimeout, command=self._setWriteTimeout)
 
         mOpt.add_separator()
 
@@ -165,26 +197,23 @@ class mainWindow(tk.Tk):
 
         self["menu"] = mBar
 
-    #
-    #   Read Timeout of Serial Bus
-    #
-
-    def setReadTimeout(self):
+    def _setReadTimeout(self) -> None:
+        """Read timeout of serial bus. Reads the value from the top Menu"""
         self.sBus.setReadTimeout(self.rTimeout.get())
 
-    #
-    #   Write Timeout of Serial Bus
-    #
-
-    def setWriteTimeout(self):
+    def _setWriteTimeout(self) -> None:
+        """Write timeout of serial bus. Reads the value from menu"""
         self.sBus.setWriteTimeout(self.wTimeout.get())
 
-    #
-    #   Opens a Serial Port
-    #   @param port
-    #           String of Port, example: "COM1" or "/dev/tty/ACM0". Defaults to no port, chooses from combobox
+    def _openSerial(self, port: str = None) -> None:
+        """Takes a port name and tries to open it.
 
-    def _openSerial(self, port=None):
+        Keyword Arguments:
+
+        port -- string with the name of the port. For example 'COM1' or '/dev/ttyACM0'
+                default None
+
+        """
         if (port == None):
             try:
                 port = self.opt.get()
@@ -194,8 +223,9 @@ class mainWindow(tk.Tk):
         err = self.sBus.openPort(port)
         if (err == 1):
             self.l_status["text"] = "Connected to " + \
-                                    self.sBus.getCurrentPort()
-            self.pages[LivePage].openScope_btn["state"] = tk.NORMAL
+                self.sBus.getCurrentPort()
+            self.disconnbtn["state"] = tk.NORMAL
+            self.scopeButton["state"] = tk.NORMAL
             self.pages[LivePage].get_btn["state"] = tk.NORMAL
             self.pages[LivePage].get_single_btn["state"] = tk.NORMAL
             self.pages[LivePage].readCont_btn["state"] = tk.NORMAL
@@ -205,6 +235,17 @@ class mainWindow(tk.Tk):
             self.pages[SettingsPage].readBtn["state"] = tk.NORMAL
             self.pages[SettingsPage].writeBtn["state"] = tk.NORMAL
 
+    def _openScope(self):
+        """Opens the Oscilloscope-Window"""
+        self.scopeWindow = ScopeWindow(self, self.sBus)
+        self.scopeWindow.focus_set()
+        self.scopeWindow.protocol("WM_DELETE_WINDOW", self._endScopeProgram)
+        self.scopeWindow.attributes("-topmost", 'true')
+
+    def _endScopeProgram(self):
+        self.scopeWindow._stopCodes()
+        self.scopeWindow.destroy()
+
     #
     #   Closes the Serial Port
     #
@@ -213,7 +254,8 @@ class mainWindow(tk.Tk):
         self.sBus.flushBus()
         self.sBus.closePort()
         self.l_status["text"] = "Not connected"
-        self.pages[LivePage].openScope_btn["state"] = tk.DISABLED
+        self.disconnbtn["state"] = tk.DISABLED
+        self.scopeButton["state"] = tk.DISABLED
         self.pages[LivePage].get_btn["state"] = tk.DISABLED
         self.pages[LivePage].get_single_btn["state"] = tk.DISABLED
         self.pages[LivePage].readCont_btn["state"] = tk.DISABLED
@@ -230,6 +272,7 @@ class mainWindow(tk.Tk):
     def _searchSerialPorts(self):
         # Check if already open
         if (self.sBus.deviceOpen()):
+            print("Serial Connection already open, cannot search for ports")
             return
         # Get all Ports
         tmp = []
@@ -245,23 +288,32 @@ class mainWindow(tk.Tk):
         self.opt["values"] = tmp
         self.allDevices.set(tmp[0])
 
-    def _show_frame(self, cont):
-        t = self.pages[cont]
+    def _show_frame(self, frame: tk.Frame):
+        """Raises the frame on top of all others
+
+            Keyword Arguments: 
+
+            frame -- tk.Frame Object to be raised on top"""
+        t = self.pages[frame]
         t.tkraise()
 
     #
     #   Getter Functions
     #
-    def _getWidth(self):
+    def getWidth(self) -> int:
+        """Returns width of the window"""
         return self.width
 
-    def _getHeight(self):
+    def getHeight(self) -> int:
+        """Returns height of the window"""
         return self.height
 
-    def _getSerialBus(self):
+    def getSerialBus(self) -> serial_device.SerialBus:
+        """Returns the current serial bus instance"""
         return self.sBus
 
     def _setIgnoreVoltageLevel(self):
+        """Tells the teensy to ignore the current voltage level"""
         self.sBus.writeString('cv')
 
     def _setReadInterval(self):
@@ -272,10 +324,10 @@ class mainWindow(tk.Tk):
 
     def endProgram(self):
         try:
-            self.pages[LivePage].endScopeProgram()
+            self.pages[LivePage]._endScopeProgram()
         except:
             pass
-        if (self._getSerialBus().deviceOpen()):
+        if (self.getSerialBus().deviceOpen()):
             self.sBus.writeString('x')
             self._closeSerial()
         # if tk.messagebox.askyesno("Save current settings","Do you want to save the current settings?"):
@@ -284,9 +336,15 @@ class mainWindow(tk.Tk):
         self.destroy()
 
 
+class topLevel(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+
 app = None
 
 if __name__ == '__main__':
-    app = mainWindow()
+    p = [MainPage, LivePage, SettingsPage]
+    app = mainWindow(p)
     app.protocol("WM_DELETE_WINDOW", app.endProgram)
     app.mainloop()

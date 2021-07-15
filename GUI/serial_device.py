@@ -1,3 +1,4 @@
+from matplotlib.animation import AVConvBase
 import serial
 import time
 import serial.tools.list_ports
@@ -7,37 +8,38 @@ import tkinter.messagebox
 class SerialBus:
     def __init__(self):
         self.sBus = serial.Serial()
+        self.name = "None"
         self.linereader = None
         self.writeTimeout = 2  # Seconds
         self.readTimeout = 2  # Seconds
         self.currPort = None  # Current Port
         self.port_list = []  # Empty Port List
 
-    def openPort(self, port):
+    def openPort(self, port: str):
         try:
             if (self.deviceOpen()):  # If open: close port and reopen with timings
                 self.sBus.close()
-                self.sBus = serial.Serial(port, timeout=self.readTimeout,
-                                          write_timeout=self.writeTimeout, baudrate=115200)
-            else:
-                self.sBus = serial.Serial(port, timeout=self.readTimeout,
-                                          write_timeout=self.writeTimeout, baudrate=115200)
+                time.sleep(1)  # Wait for 1s
+            self.sBus = serial.Serial(port, timeout=self.readTimeout,
+                                      write_timeout=self.writeTimeout, baudrate=115200)
 
             self.currPort = port
             self.linereader = ReadLine(self.sBus)
             # Check if the port is correct
             try:
                 self.writeString('ci')
-                answer = self.linereader.readline().decode('utf-8')
-                if (answer == 'TEENSY_CONNECTED'):
-                    print("No Problemo")
-                else:
-                    print(answer)
+                answer = self.linereader.readline().decode('utf-8').rstrip()
+                if (answer != "tconn"):
+                    print("Error connecting")
+                    self.sBus.close()
+                    return 0
+
             except serial.serialutil.SerialTimeoutException as e:
                 tkinter.messagebox.showinfo("Info",
-                                            "Timeout. Connection with Teensy not possible.\n Maybe a wrong port?\n Error:\n" + str(
-                                                e))
-
+                                            "Timeout. Connection with Teensy-port '"+str(self.currPort) +
+                                            "' not possible.\n Maybe a wrong port?")
+                self.sBus.close()
+                return 0
 
         except ValueError:
             print("Error, couldn't open Serial port. "
@@ -107,7 +109,8 @@ class SerialBus:
     def writeEEPROMValue(self, adress, value, mask, pos):
         if (self.deviceOpen()):
             try:
-                stream = 'ww<' + adress + ' ' + str(value) + ' ' + mask + ' ' + str(pos) + '>'
+                stream = 'ww<' + adress + ' ' + \
+                    str(value) + ' ' + mask + ' ' + str(pos) + '>'
                 print(stream)
                 self.sBus.write(stream.encode())
             except:
@@ -225,7 +228,7 @@ class ReadLine:
         self.counter = 0
         i = self.buf.find(b"\n")
         if i >= 0:
-            r = self.buf[:i + 1]
+            r = self.buf[:i]
             self.buf = self.buf[i + 1:]
             return r
         while True:
@@ -233,7 +236,7 @@ class ReadLine:
             data = self.s.read(i)
             i = data.find(b"\n")
             if i >= 0:
-                r = self.buf + data[:i + 1]
+                r = self.buf + data[:i]
                 self.buf[0:] = data[i + 1:]
                 self.counter = 0
                 return r

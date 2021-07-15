@@ -11,8 +11,9 @@ class SettingsPage(tk.Frame):
     def __init__(self, parent, controller):
         ttk.Frame.__init__(self, parent)
         self.contr = controller
+        self.name = "Settings"
         self.writeAdress = tk.StringVar()
-        self.sBus = controller._getSerialBus()
+        self.sBus = controller.getSerialBus()
         self.EEPROMDict = {}
 
         self.init = False  # Is the EEPROM initialized?
@@ -72,10 +73,10 @@ class SettingsPage(tk.Frame):
             lines = d.readlines()
             d.close()
 
-            #Tree init
+            # Tree init
             self.tree["columns"] = ("Field", "Address", "Value", "Interval")
             for e in self.tree["columns"]:
-                self.tree.column(e, width=(self.contr._getWidth() //
+                self.tree.column(e, width=(self.contr.getWidth() //
                                            len(self.tree["columns"])) - 3, stretch=tk.NO)
                 self.tree.heading(e, text=e)
 
@@ -96,7 +97,7 @@ class SettingsPage(tk.Frame):
             self.adressfield.current(0)
             self.initBtn["text"] = "Get all Values"
             self.init = True
-            #Initial read of values only if serial port is connected
+            # Initial read of values only if serial port is connected
             if (self.sBus.deviceOpen()):
                 self._getEEPROMValues()
         else:
@@ -127,9 +128,9 @@ class SettingsPage(tk.Frame):
         if (ret == 0):  # Writing function could not write a value
             print("Malfunction in EEPROM writing")
             return
-        time.sleep(50 / 1000) #EEPROM-Write waiting time in milliseconds
+        time.sleep(50 / 1000)  # EEPROM-Write waiting time in milliseconds
         self._readValue(field)
-        self.sBus.writeString("bf") #Start Teensy-FFT
+        self.sBus.writeString("bf")  # Start Teensy-FFT
 
     #
     #   Reads an EEPROM-Value and converts it accordingly
@@ -146,7 +147,8 @@ class SettingsPage(tk.Frame):
             pos = self.EEPROMDict[field][2]
             data = self.sBus.readEEPROMValue(adr, mask, str(pos))
             #    field, adr, mask, pos, data))
-            if (self.EEPROMDict[field][3] < 0): #See, if a value is in two's complement
+            # See, if a value is in two's complement
+            if (self.EEPROMDict[field][3] < 0):
                 minval = self.EEPROMDict[field][3]
                 data = utils.ConvertTwosComplement(data, len(bin(minval)[3:]))
 
