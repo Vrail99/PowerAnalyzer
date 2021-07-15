@@ -1,6 +1,8 @@
+#from main import mainWindow
 import tkinter as tk
 from tkinter import ttk
-import time, os
+import time
+import os
 
 from PIL import Image, ImageTk
 
@@ -18,11 +20,13 @@ class MainPage(tk.Frame):
     #   @param controller
     #           Controller Class, like a backbone
     #
-    def __init__(self, parent, controller):
+    def __init__(self, parent: tk.Frame, controller):
         ttk.Frame.__init__(self, parent)
         self.contr = controller
-        self.sBus = controller._getSerialBus()
-        #Styles
+        self.sBus = controller.getSerialBus()
+        self.name = "Main"
+
+        # Styles
         self.style = ttk.Style()
         labelstyle = ttk.Style()
         labelstyle.configure("TLabel", font=('Helvetica', 12))
@@ -39,7 +43,7 @@ class MainPage(tk.Frame):
         mainframe = ttk.Frame(self)
         mainframe.pack()
         acslabel = ttk.Label(
-        mainframe, text="ACS71020 Evaluation Adaptor", style="Titletext.TLabel")
+            mainframe, text="ACS71020 Evaluation Adaptor", style="Titletext.TLabel")
         acslabel.grid(column=0, row=0, columnspan=2)
         image = Image.open(os.getcwd()+"/acspic2.jpg")
         photo = ImageTk.PhotoImage(image)

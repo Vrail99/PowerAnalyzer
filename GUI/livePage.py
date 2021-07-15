@@ -17,6 +17,7 @@ class LivePage(tk.Frame):
     def __init__(self, parent, controller):
         ttk.Frame.__init__(self, parent)
         self.contr = controller
+        self.name = "Values"
 
         self.ratedVoltage = 230.0  # RMS voltage
         self.init = False
@@ -26,7 +27,7 @@ class LivePage(tk.Frame):
 
         self.VolatileDict = {}
         self._guiSetup()
-        self.sBus = controller._getSerialBus()
+        self.sBus = controller.getSerialBus()
 
     def _guiSetup(self):
         # Frames for Buttons and Tree
@@ -56,7 +57,8 @@ class LivePage(tk.Frame):
         self.stopRead_btn.pack(side=tk.LEFT)
 
         # Fill Second Button Frame
-        self.timeSync_btn = ttk.Button(buttonframe2, text="Time Sync", state=tk.DISABLED, command=self._syncTime)
+        self.timeSync_btn = ttk.Button(
+            buttonframe2, text="Time Sync", state=tk.DISABLED, command=self._syncTime)
         self.timeSync_btn.pack()
 
         # Create TreeView
@@ -64,22 +66,12 @@ class LivePage(tk.Frame):
         self.tree['show'] = 'headings'
         self.tree.pack()
 
-        # Fill Third Button Frame
-        self.openScope_btn = ttk.Button(
-            buttonframe3, text="Open Waveform View", state=tk.DISABLED, command=self.openScope)
-        self.openScope_btn.pack(pady=5)
+        # # Fill Third Button Frame
+        # self.openScope_btn = ttk.Button(
+        #     buttonframe3, text="Open Waveform View", state=tk.DISABLED, command=self.openScope)
+        # self.openScope_btn.pack(pady=5)
 
         self._initVolatile()
-
-    def openScope(self):
-        #Create a New Window for Scope Page
-        self.scopeWindow = tk.Toplevel(self, background='#d9d9d9')
-        self.liveScope = ScopeWindow(self.scopeWindow, self.sBus)
-        self.scopeWindow.protocol("WM_DELETE_WINDOW", self.endScopeProgram)
-
-    def endScopeProgram(self):
-        self.liveScope._stopCodes()
-        self.scopeWindow.destroy()
 
     def _initVolatile(self):
         try:
@@ -94,7 +86,7 @@ class LivePage(tk.Frame):
         self.tree["columns"] = (
             "Field", "Address", "Integer", "Converted", "Unit")
         for e in self.tree["columns"]:
-            self.tree.column(e, width=(self.contr._getWidth() //
+            self.tree.column(e, width=(self.contr.getWidth() //
                                        len(self.tree["columns"])) - 10, stretch=tk.NO)
             self.tree.heading(e, text=e)
 

@@ -19,7 +19,7 @@ class ScopeWindow:
     def __init__(self, controller, bus, updateRate=31):
         self.contr = controller
         self.sBus = bus
-
+        self.name = "Scope"
         # Oscilloscope Variables
         # Sampling time, default: 200ms (10 50Hz Periods)
         # Sampling Time: 200ms (10 Cycles of 50 Hz)
@@ -55,7 +55,7 @@ class ScopeWindow:
         self.runCodeThread = False
         # Plotfigure and axes
         self.plotfig = plt.Figure(
-            figsize=(1024 * 0.0104166667, 680 * 0.0104166667), dpi=100)
+            figsize=(600 * 0.0104166667, 400 * 0.0104166667), dpi=100)
         self.vc_plot = self.plotfig.add_subplot(2, 1, 1)
         self.ic_plot = self.plotfig.add_subplot(2, 1, 2)
 
@@ -78,7 +78,8 @@ class ScopeWindow:
         self.startBtn = ttk.Button(
             btnFrm, text="Start", command=self._startCodes)
         self.stopBtn = ttk.Button(btnFrm, text="Stop", command=self._stopCodes)
-        self.saveBtn = ttk.Button(btnFrm, text="Save", command=self._saveWaveform)
+        self.saveBtn = ttk.Button(
+            btnFrm, text="Save", command=self._saveWaveform)
         self.startBtn.pack()
         self.stopBtn.pack()
         self.saveBtn.pack()
@@ -133,7 +134,8 @@ class ScopeWindow:
 
                     thd = round(utils.calcTHD(
                         yAxis, 17, logfile=self.logfile), self.precision)
-                    print("Peak: {:.3f}, THD: {:.3f}".format(max(codeArray), thd))
+                    print("Peak: {:.3f}, THD: {:.3f}".format(
+                        max(codeArray), thd))
 
                     self.fullTHD += thd
                     self.thdCounter += 1
@@ -146,7 +148,8 @@ class ScopeWindow:
                             self.fullTHD / 15)
                         self.logfile.write(stri + "\n")
                         print(stri)
-                        stri = "THD der FFT über 150 Perioden: {:.3f} %".format(fft_thd)
+                        stri = "THD der FFT über 150 Perioden: {:.3f} %".format(
+                            fft_thd)
                         self.logfile.write(stri + "\n")
                         print(stri)
 
@@ -178,7 +181,8 @@ class ScopeWindow:
                         self.fullFFT += pow(yAxis, 2)  # squared value
                     thd = round(utils.calcTHD(
                         yAxis, 17), self.precision)
-                    print("Peak: {:.3f}, THD: {:.3f}".format(max(codeArray), thd))
+                    print("Peak: {:.3f}, THD: {:.3f}".format(
+                        max(codeArray), thd))
 
                     self.fullTHD += thd
                     self.thdCounter += 1
@@ -191,7 +195,8 @@ class ScopeWindow:
                             self.fullTHD / 15)
                         self.logfile.write(stri + "\n")
                         print(stri)
-                        stri = "Current THD of FFT over 150 Periods: {:.3f} %".format(fft_thd)
+                        stri = "Current THD of FFT over 150 Periods: {:.3f} %".format(
+                            fft_thd)
                         self.logfile.write(stri + "\n")
                         print(stri)
                     avg = round(sum(self.icodes) / len(self.icodes), 6)
@@ -216,19 +221,19 @@ class ScopeWindow:
                     self.ic_plot.set_xlim(0, self.freq_range)
                 else:
                     tmp = np.linspace(0, self.sampleWindow, len(self.vcodes))
-                    #Plot
+                    # Plot
                     self.vc_plot.plot(tmp, self.vcodes)
-                    #Cosmetics
+                    # Cosmetics
                     self.vc_plot.set_title("Spannung")
                     self.vc_plot.set_xlim(0, self.timeRange)
                     self.vc_plot.set_ylim(-self.voltRange, self.voltRange)
                     self.vc_plot.set_xlabel("Zeit (ms)", loc='right')
                     self.vc_plot.set_ylabel("Amplitude (V)")
 
-                    #Plot
+                    # Plot
                     tmp = np.linspace(0, self.sampleWindow, len(self.icodes))
                     self.ic_plot.plot(tmp, self.icodes)
-                    #Cosmetics
+                    # Cosmetics
                     self.ic_plot.set_title("Strom")
                     if (self.currRange > 0):
                         self.ic_plot.set_ylim(
@@ -237,9 +242,9 @@ class ScopeWindow:
                     self.ic_plot.set_xlabel("Zeit (ms)", loc='right')
                     self.ic_plot.set_ylabel("Amplitude (A)")
 
-                #Show Plots
+                # Show Plots
                 plt.show()
-                #Reset Sampling
+                # Reset Sampling
                 self.samplingDone = False
                 self.vcodes2 = []
                 self.icodes2 = []
@@ -261,20 +266,23 @@ class ScopeWindow:
                 print("None")
                 continue
             else:
-                tmp = data.decode('utf-8').split(',')  # if multiple values are sent
+                # if multiple values are sent
+                tmp = data.decode('utf-8').split(',')
                 try:
                     ic = 0
                     vc = 0
                     if mode == 'bc':  # Convert both received datapoints to int
                         vc = int(tmp[0])
-                        ic = int(tmp[1][:-1])  # Important: before Board-Rev. 2.0: invert value
+                        # Important: before Board-Rev. 2.0: invert value
+                        ic = int(tmp[1][:-1])
                         # ic = -1*int(tmp[1][:-1]) #Only for Board Rev. 1.0
                     elif mode == 'ic':
                         ic = int(tmp[0])
                     else:
                         vc = int(tmp[0])
 
-                    if (vc > 131072 or ic > 131072 or len(tmp) > 2):  # Delete failed readings, if they appear
+                    # Delete failed readings, if they appear
+                    if (vc > 131072 or ic > 131072 or len(tmp) > 2):
                         vc = 0
                         ic = 0
                         print("Skipped value")
@@ -372,23 +380,23 @@ class ScopeWindow:
     def _saveWaveform(self):
         if not self.runCodeThread:
             file = tkinter.filedialog.asksaveasfile()
-            if (self.showPlots == 0): #Voltage waveform
+            if (self.showPlots == 0):  # Voltage waveform
                 file.write("Voltage Values\n")
                 for e in self.vcodes:
                     file.write(str(e)+"\n")
                 file.write("FFT Values\n")
                 for e in self.fftArray:
                     file.writelines(str(e)+"\n")
-            elif  (self.showPlots == 1): #Current Waveform
+            elif (self.showPlots == 1):  # Current Waveform
                 file.write("Current Values\n")
                 for e in self.icodes:
                     file.write(str(e) + "\n")
                 file.write("FFT Values\n")
                 for e in self.fftArray:
                     file.writelines(str(e) + "\n")
-            elif (self.showPlots == 2): #Both Waves
+            elif (self.showPlots == 2):  # Both Waves
                 file.write("Voltage;Current\n")
-                for v,i in zip(self.vcodes, self.icodes):
+                for v, i in zip(self.vcodes, self.icodes):
                     file.write(str(v)+";"+str(i)+"\n")
             file.close()
 
