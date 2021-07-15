@@ -15,8 +15,9 @@ import tkinter.filedialog
 # matplotlib.use('TkAgg')
 
 
-class ScopeWindow:
+class ScopeWindow(tk.Toplevel):
     def __init__(self, controller, bus, updateRate=31):
+        super().__init__(controller, background='#d9d9d9', takefocus=True)
         self.contr = controller
         self.sBus = bus
         self.name = "Scope"
@@ -66,10 +67,10 @@ class ScopeWindow:
             self.plotfig, self._animate, interval=self.animRate)
 
     def _guiSetup(self):
-        topFrame = ttk.Frame(self.contr)
+        topFrame = ttk.Frame(self)
         radioFrm = ttk.Frame(topFrame)
         btnFrm = ttk.Frame(topFrame)
-        self.scopeFrame = ttk.Frame(self.contr)
+        self.scopeFrame = ttk.Frame(self)
         topFrame.pack()
         btnFrm.pack(side=tk.LEFT, pady=5, padx=5)
         radioFrm.pack(side=tk.LEFT, pady=5, padx=5)
@@ -404,4 +405,4 @@ class ScopeWindow:
     # Closes the scope view
     #
     def closeScope(self):
-        self.contr.destroy()
+        self.destroy()
