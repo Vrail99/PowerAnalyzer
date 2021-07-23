@@ -9,8 +9,9 @@ Date: 210417
 #include <Adafruit_SSD1327.h> //Display Library
 #include <TimeLib.h>          //Time Library for Real-Time Clock
 #include <math.h>
+#include <Watchdog_t4.h>      //Watchdog Library for reset on error
 
-//Uncomment for Debug messages on Serial Port 2
+//Uncomment for Debug messages on Serial Port 3
 //#define DEBUG
 
 //Defines for GPIO
@@ -77,9 +78,9 @@ uint32_t vCodeBuffer[SAMPBUFFLEN] = {0};
 uint32_t iCodeBuffer[SAMPBUFFLEN] = {0};
 
 //Teensy Sample Buffers
-float32_t vSamps[FFTBUFFLEN] = {0.0};
-float32_t iSamps[FFTBUFFLEN] = {0.0};
-float32_t Mags[FFTLEN] = {0.0};
+float vSamps[FFTBUFFLEN] = {0.0};
+float iSamps[FFTBUFFLEN] = {0.0};
+float Mags[FFTLEN] = {0.0};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Volatile Memory Values
@@ -103,21 +104,31 @@ uint32_t pact_min = 0;
 uint32_t irms_min = 0;
 uint32_t vrms_min = 0;
 
-float32_t zcd_thresh = 0.2;
+float zcd_thresh = 0.2;
 
 //Variables for harmonic distortion calculation
-float32_t thd_v; //Total Harmonic Voltage Distortion
-float32_t thd_i; //Total Harmonic Current Distortion
-float32_t pwr_f; //Power Frequency
-float32_t phaseangle;
+float thd_v; //Total Harmonic Voltage Distortion
+float thd_i; //Total Harmonic Current Distortion
+float pwr_f; //Power Frequency
+float phaseangle;
 
 bool grouping_en = true;
-float32_t thdg_v = 0;
-float32_t thdsg_v = 0;
-float32_t thdg_i = 0;
-float32_t thdsg_i = 0;
+float thdg_v = 0;
+float thdsg_v = 0;
+float thdg_i = 0;
+float thdsg_i = 0;
+
 //ReadTimes
-uint32_t newTime, streamTime, displayTime, codeTime; //Time-Tracker, seconds-timer, minute-timer
+uint32_t newTime, streamTime, displayTime; //Time-Tracker, seconds-timer, minute-timer
+
+//Instantiate Watchdogtimer 3
+WDT_T4<WDT3> wdt;
+uint32_t checkTime;
+uint32_t wdTimeout = 30000; //ms
+
+void checkCallback(){
+  SerialUSB1.println("Resetting the Teensy in 255 cycles");
+}
 
 void setup()
 {
@@ -145,7 +156,7 @@ void setup()
   }
 
   //Voltage detection. Requires calibration of sensitivity
-  float32_t tmp = calcVRMS();
+  float tmp = calcVRMS();
   if (tmp > 100) //At least 10V RMS voltage
   {
     calcFFT = true;
@@ -157,6 +168,14 @@ void setup()
   //Initialization of timers
   streamTime = millis();  //
   displayTime = millis(); //Display timing
+  checkTime = millis();
+
+  //Configuration of watchdog Timer
+  WDT_timings_t config;
+  config.timeout = wdTimeout; /* in ms, 32ms to 522.232s */
+  config.callback = checkCallback;
+  wdt.begin(config);
+  
 
   //End of Init
 }
@@ -189,25 +208,25 @@ void loop()
     else if (calcFFT)
     {
       arm_cfft_radix4_f32(&fftInstance, vSamps);         //In-Place FFT
-      float32_t angle_v = atan2(vSamps[21], vSamps[20]); //Angle from pure spectrum
+      float angle_v = atan2(vSamps[21], vSamps[20]); //Angle from pure spectrum
       arm_cmplx_mag_f32(vSamps, Mags, FFTLEN);           //Calculate Magnitudes
       thd_v = calcTHD(17);                               //Calculate Total Harmonic Distortion
       if (grouping_en)                                   //If grouping enabled, calculate Harmonic Groups
       {
-        float32_t fgroups[17] = {0};
+        float fgroups[17] = {0};
         thdg_v = calcTHDG(Mags, fgroups, 17);
         thdsg_v = calcTHDSG(Mags, fgroups, 17);
       }
       //FFT for Current samples
       arm_cfft_radix4_f32(&fftInstance, iSamps); //In-Place FFT
-      float32_t angle_i = atan2(iSamps[21], iSamps[20]);
+      float angle_i = atan2(iSamps[21], iSamps[20]);
       phaseangle = (angle_v - angle_i) * (180 / PI);
 
       arm_cmplx_mag_f32(iSamps, Mags, FFTLEN);
       thd_i = calcTHD(17);
       if (grouping_en) //If grouping enabled, calculate Harmonic Groups
       {
-        float32_t fgroups[17] = {0};
+        float fgroups[17] = {0};
         thdg_i = calcTHDG(Mags, fgroups, 17);
         thdsg_i = calcTHDSG(Mags, fgroups, 17);
       }
@@ -254,6 +273,11 @@ void loop()
   }
   //Check for Serial input
   getCommand();
+
+  if(newTime > checkTime+wdTimeout-5000){
+    wdt.feed();
+    checkTime=newTime;
+  }
 }
 
 //Function to detect Zero Crossings
@@ -261,7 +285,7 @@ int detectCurrentZC(uint8_t orient)
 {
   if (orient == 1) //Positive peak detected -> Detect Negative Slope
   {
-    float32_t currdata = readICodes();
+    float currdata = readICodes();
     while (currdata > -zcd_thresh)
     {
       currdata = readICodes();
@@ -270,7 +294,7 @@ int detectCurrentZC(uint8_t orient)
   }
   if (orient == 0)
   { //Negative peak detected: Detect positive Slope
-    float32_t currdata = readICodes();
+    float currdata = readICodes();
     while (currdata < zcd_thresh)
     {
       currdata = readICodes();
@@ -279,11 +303,11 @@ int detectCurrentZC(uint8_t orient)
   }
 }
 
-float32_t calcTHD(uint8_t order)
+float calcTHD(uint8_t order)
 {
   uint32_t s = 50 / binSize; //50Hz base frequency
-  float32_t thd = 0;
-  float32_t base = Mags[s];
+  float thd = 0;
+  float base = Mags[s];
   for (uint32_t i = s * 2; i < order * s; i += s)
   {
     thd += pow(Mags[i] / base, 2);
@@ -293,10 +317,10 @@ float32_t calcTHD(uint8_t order)
   return thd;
 }
 
-uint32_t getMaxValueIndex(float32_t values[], uint32_t arrlen)
+uint32_t getMaxValueIndex(float values[], uint32_t arrlen)
 {
   uint32_t maxIndex = 0;
-  float32_t maxVal = values[maxIndex];
+  float maxVal = values[maxIndex];
 
   for (uint32_t i = 0; i < arrlen; i++)
   {
@@ -314,7 +338,7 @@ uint32_t getMaxValueIndex(float32_t values[], uint32_t arrlen)
 */
 void updateDisplay()
 {
-  float32_t temp = calcVRMS();
+  float temp = calcVRMS();
   //Updates to the display
   display.clearDisplay();
   display.setCursor(0, 0); //Cursor Position top-left
@@ -354,7 +378,7 @@ void updateDisplay()
     pfact = ACS_PF;
     temp = ConvertSignedFixedPoint(pfact, 9, 11);
     display.printf("P-Factor: %.2f\n", temp);
-    //float32_t ang = acos(temp) * (180 / PI);
+    //float ang = acos(temp) * (180 / PI);
     display.printf("Winkel: %.2fdeg\n", phaseangle);
   }
   else
@@ -411,7 +435,7 @@ void measureFrequency()
     ZC = ACSchip.readReg(0x2D) & 0x1; //update value
   }
   secTime = micros(); //Save the time of the second rising edge
-  float32_t ti = secTime - firstTime;
+  float ti = secTime - firstTime;
   pwr_f = 1 / (ti / 1000000); //Convert time to seconds and calculate Frequency
 }
 
@@ -424,7 +448,6 @@ void receiveCommandString()
   char enddel = '>';      //End delimiter
   bool receiving = false; //Receiving flag
   uint8_t cntr = 0;       //Char counter
-
   while (Serial.available() > 0) //Receive while characters are on the Serial Bus / Buffer
   {
     char rc = Serial.read();
@@ -465,14 +488,13 @@ void receiveCommandString()
 void writeEEPROMValue()
 {
   receiveCommandString(); //Read incoming data
-
   uint32_t address = 0;
   int32_t value = 0; //Can be signed
   uint32_t mask = 0;
   uint8_t pos = 0;
   char *endPointer;
 
-  address = strtol(receivedChars, &endPointer, 16);
+  address = strtoul(receivedChars, &endPointer, 16);
   value = strtol(endPointer, &endPointer, 10);
   mask = strtoul(endPointer, &endPointer, 16);
   pos = strtol(endPointer, NULL, 10);
@@ -528,7 +550,7 @@ void startStreamingPC()
   receiveCommandString();
   char *endPointer;
 
-  float32_t streamTime = strtof(receivedChars, &endPointer);
+  float streamTime = strtof(receivedChars, &endPointer);
   SerialUSB1.printf("Stream time delay: %f\n", streamTime);
   bool err = smplTimer.begin(streamSampling, streamTime); //Maximum
   if (!err)
@@ -782,6 +804,7 @@ void getCommand()
       else if (c2 == 'i')
       { //Connection test
         Serial.print("tconn\n");
+        connectComputer(true);
       }
       else if (c2 == 'v') //Ignore voltage detection
       {
@@ -828,7 +851,7 @@ void connectComputer(bool conn)
  *    width       - the width of the bitfield
  *    returns     - the floating point number
  */
-float32_t ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width)
+float ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width)
 {
   uint32_t mask;
 
@@ -841,7 +864,7 @@ float32_t ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, u
     mask = (1UL << width) - 1UL;
   }
 
-  return (float32_t)(inputValue & mask) / (float32_t)(1L << binaryPoint);
+  return (float)(inputValue & mask) / (float)(1L << binaryPoint);
 }
 
 /*
@@ -852,10 +875,10 @@ float32_t ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, u
  *    width       - the width of the bitfield
  *    returns     - the floating point number
  */
-float32_t ConvertSignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width)
+float ConvertSignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width)
 {
   int32_t signedValue = SignExtendBitfield(inputValue, width);
-  return (float32_t)signedValue / (float32_t)(1L << binaryPoint);
+  return (float)signedValue / (float)(1L << binaryPoint);
 }
 
 /*
@@ -881,7 +904,7 @@ int32_t SignExtendBitfield(uint32_t data, uint16_t width)
   return (int32_t)((x ^ mask) - mask);
 }
 
-float32_t readICodes()
+float readICodes()
 {
   return ConvertSignedFixedPoint(ACS_ICODE, 15, 17) * 15;
 }
@@ -909,44 +932,44 @@ void timeSync()
 // Calculation Functions
 ////////////////////////////////////////////////////////////////////////////////
 
-float32_t calcVRMS()
+float calcVRMS()
 {
   v_rms = ACS_VRMS;
   uint32_t calib_Code = 21280;                  //Calibration Factor
-  float32_t exp_RMS = 0.1784;                   //Expected Input VRMS from Calibration
-  float32_t conv_factor = exp_RMS / calib_Code; //Actual Sensitivity
+  float exp_RMS = 0.1784;                   //Expected Input VRMS from Calibration
+  float conv_factor = exp_RMS / calib_Code; //Actual Sensitivity
 
-  float32_t vrms_rsense = v_rms * conv_factor;           //Voltage over RS1
-  float32_t vrms_input = vrms_rsense * (4003000 / 3000); //Voltage at output
+  float vrms_rsense = v_rms * conv_factor;           //Voltage over RS1
+  float vrms_input = vrms_rsense * (4003000 / 3000); //Voltage at output
   return vrms_input;
 }
-float32_t calcIRMS()
+float calcIRMS()
 {
   i_rms = ACS_IRMS;
   uint32_t i_calib_Code = 257;
-  float32_t conv_factor = 0.26086 / i_calib_Code; //Calibration from Lightbulb
-  float32_t irms = i_rms * conv_factor;
+  float conv_factor = 0.26086 / i_calib_Code; //Calibration from Lightbulb
+  float irms = i_rms * conv_factor;
   return irms;
 }
 
-float32_t calcTHDG(float32_t frequencies[], float32_t output[], int order)
+float calcTHDG(float frequencies[], float output[], int order)
 {
-  float32_t groupvalue = 0;
+  float groupvalue = 0;
   for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
   {
     groupvalue = pow(frequencies[i * 10 - 5], 2) / 2; //Add 1/2*Value offset by 5 to the left
-    float32_t sumvalue = 0;
+    float sumvalue = 0;
     for (int k = -4; k < 5; k++) //Add all values from -4 to 4 around the harmonic order
     {
       sumvalue += pow(frequencies[i * 10 + k], 2);
     }
     groupvalue += sumvalue + pow(Mags[i * 10 + 5], 2) / 2; //Add 1/2*Value offset by 5 to the right
-    float32_t result = sqrt(groupvalue);
+    float result = sqrt(groupvalue);
     output[i] = result; //Save it in output array
   }
   //Calculate THDG
-  float32_t thdg = 0;
-  float32_t base = output[1];
+  float thdg = 0;
+  float base = output[1];
   for (uint8_t i = 2; i <= order; i++)
   {
     thdg += pow(output[i] / base, 2);
@@ -954,21 +977,21 @@ float32_t calcTHDG(float32_t frequencies[], float32_t output[], int order)
   thdg = sqrt(thdg) * 100;
   return thdg;
 }
-float32_t calcTHDSG(float32_t frequencies[], float32_t output[], int order)
+float calcTHDSG(float frequencies[], float output[], int order)
 {
   for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
   {
-    float32_t sumvalue = 0;
+    float sumvalue = 0;
     for (int k = -1; k < 2; k++) //Add neighbor values
     {
       sumvalue += pow(frequencies[i * 10 + k], 2);
     }
-    float32_t result = sqrt(sumvalue);
+    float result = sqrt(sumvalue);
     output[i] = result;
   }
   //Calculate THDSG
-  float32_t thdsg = 0;
-  float32_t base = output[1];
+  float thdsg = 0;
+  float base = output[1];
   for (uint8_t i = 2; i <= order; i++)
   {
     thdsg += pow(output[i] / base, 2);
