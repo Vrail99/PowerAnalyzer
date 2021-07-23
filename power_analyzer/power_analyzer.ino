@@ -9,7 +9,7 @@ Date: 210417
 #include <Adafruit_SSD1327.h> //Display Library
 #include <TimeLib.h>          //Time Library for Real-Time Clock
 #include <math.h>
-#include <Watchdog_t4.h>      //Watchdog Library for reset on error
+#include <Watchdog_t4.h> //Watchdog Library for reset on error
 
 //Uncomment for Debug messages on Serial Port 3
 //#define DEBUG
@@ -63,8 +63,9 @@ uint16_t DISPLAY_UPD_RATE = 1000; //Display update time in Milliseconds
 
 //Flags for enabling Streaming
 bool sampling = false;
+bool powerSampling = false;
 bool calcFFT = false;
-uint8_t runmode = 0;            //0: Idle, 1: Voltage, 2: Current, 3: Voltage & Current
+uint8_t runmode = 0;            //0: Idle, 1: Voltage/Power, 2: Current, 3: Voltage & Current
 bool computerConnected = false; // Display flag
 bool voltage_detected = false;  //For frequency measurement, requires a voltage for zero crossings
 
@@ -126,12 +127,18 @@ WDT_T4<WDT3> wdt;
 uint32_t checkTime;
 uint32_t wdTimeout = 30000; //ms
 
-void checkCallback(){
-  SerialUSB1.println("Resetting the Teensy in 255 cycles");
+void checkCallback()
+{
 }
 
 void setup()
 {
+  //Configuration of watchdog Timer
+  WDT_timings_t config;
+  config.timeout = wdTimeout; /* in ms, 32ms to 522.232s */
+  config.callback = checkCallback;
+  wdt.begin(config);
+  
   //Init Serial communication
   //Dual Channel Serial Communication
   Serial.begin(115200);     //Main transmit port
@@ -170,13 +177,6 @@ void setup()
   displayTime = millis(); //Display timing
   checkTime = millis();
 
-  //Configuration of watchdog Timer
-  WDT_timings_t config;
-  config.timeout = wdTimeout; /* in ms, 32ms to 522.232s */
-  config.callback = checkCallback;
-  wdt.begin(config);
-  
-
   //End of Init
 }
 
@@ -207,11 +207,11 @@ void loop()
     //Calculate FFT and the harmonic distortion
     else if (calcFFT)
     {
-      arm_cfft_radix4_f32(&fftInstance, vSamps);         //In-Place FFT
+      arm_cfft_radix4_f32(&fftInstance, vSamps);     //In-Place FFT
       float angle_v = atan2(vSamps[21], vSamps[20]); //Angle from pure spectrum
-      arm_cmplx_mag_f32(vSamps, Mags, FFTLEN);           //Calculate Magnitudes
-      thd_v = calcTHD(17);                               //Calculate Total Harmonic Distortion
-      if (grouping_en)                                   //If grouping enabled, calculate Harmonic Groups
+      arm_cmplx_mag_f32(vSamps, Mags, FFTLEN);       //Calculate Magnitudes
+      thd_v = calcTHD(17);                           //Calculate Total Harmonic Distortion
+      if (grouping_en)                               //If grouping enabled, calculate Harmonic Groups
       {
         float fgroups[17] = {0};
         thdg_v = calcTHDG(Mags, fgroups, 17);
@@ -274,9 +274,10 @@ void loop()
   //Check for Serial input
   getCommand();
 
-  if(newTime > checkTime+wdTimeout-5000){
+  if (newTime > checkTime + wdTimeout - 5000)
+  {
     wdt.feed();
-    checkTime=newTime;
+    checkTime = newTime;
   }
 }
 
@@ -444,10 +445,10 @@ void measureFrequency()
 */
 void receiveCommandString()
 {
-  char stdel = '<';       //Start delimiter
-  char enddel = '>';      //End delimiter
-  bool receiving = false; //Receiving flag
-  uint8_t cntr = 0;       //Char counter
+  char stdel = '<';              //Start delimiter
+  char enddel = '>';             //End delimiter
+  bool receiving = false;        //Receiving flag
+  uint8_t cntr = 0;              //Char counter
   while (Serial.available() > 0) //Receive while characters are on the Serial Bus / Buffer
   {
     char rc = Serial.read();
@@ -515,11 +516,11 @@ void startSamplingFFT()
   while (zcd != 1)
     zcd = ACSchip.readReg(0x2D) & 0x1;
   bool err = smplTimer.begin(getSamples_FFT, FFTSAMPLERATE);
-  #ifdef DEBUG
-    if (!err)
-      SerialUSB1.println("Error starting Timer");
-    SerialUSB1.println("Started FFT Sample Timer");
-  #endif
+#ifdef DEBUG
+  if (!err)
+    SerialUSB1.println("Error starting Timer");
+  SerialUSB1.println("Started FFT Sample Timer");
+#endif
 }
 
 // Start normal Sampling for PC calculation
@@ -538,7 +539,29 @@ void startSamplingPC()
   bool err = smplTimer.begin(getSamplesPC, SAMPLERATE);
   if (!err)
     SerialUSB1.println("Error starting Timer");
-  SerialUSB1.println("Started PC Sample Timer");
+
+  #ifdef DEBUG
+    SerialUSB1.println("Started PC Sample Timer");
+  #endif
+}
+
+// Sampling for PC Calculation
+void getSamplesPC()
+{
+  //Read Icodes and Vcodes as close as possible to each other
+  //Adding power sampling
+  if (powerSampling)
+    vCodeBuffer[sampleCntr] = ACS_PACTIVE;
+  else
+    vCodeBuffer[sampleCntr] = ACS_VCODE;
+
+  iCodeBuffer[sampleCntr] = ACS_ICODE;
+  sampleCntr++;
+  if (sampleCntr > SAMPBUFFLEN - 1) //If sampleBuffer is filled up
+  {
+    samplingDone = true;
+    stopSampling();
+  }
 }
 
 // Start Stream Sampling for PC
@@ -557,19 +580,6 @@ void startStreamingPC()
     SerialUSB1.println("Error starting Stream Timer");
 }
 
-// Sampling for PC Calculation
-void getSamplesPC()
-{
-  //Read Icodes and Vcodes as close as possible to each other
-  vCodeBuffer[sampleCntr] = ACS_VCODE;
-  iCodeBuffer[sampleCntr] = ACS_ICODE;
-  sampleCntr++;
-  if (sampleCntr > SAMPBUFFLEN - 1) //If sampleBuffer is filled up
-  {
-    samplingDone = true;
-    stopSampling();
-  }
-}
 // Sampling for Teensy-FFT Calculation
 void getSamples_FFT()
 {
@@ -607,9 +617,9 @@ void streamSampling()
 void stopSampling()
 {
   smplTimer.end();
-  #ifdef DEBUG
-    SerialUSB1.println("Stopped Sample Timer");
-  #endif
+#ifdef DEBUG
+  SerialUSB1.println("Stopped Sample Timer");
+#endif
 }
 ////////////////////////////////////////////////////////////////////////////////
 // Command Input
@@ -680,7 +690,6 @@ void getCommand()
       }
       else if (c2 == 'c') //Start Current Sampling
       {
-        connectComputer(true);
         startSamplingPC();
         runmode = 2;
       }
@@ -726,6 +735,12 @@ void getCommand()
       {
         pinst = ACS_PINST;
         Serial.printf("%u\n", pinst);
+      }
+      else if (c2 == 'c') //Power codes
+      {
+        powerSampling = true;
+        startSamplingPC();
+        runmode = 1; //Voltage or active power
       }
     }
     else if (c1 == 's') //**************************Status*****************************
@@ -786,6 +801,7 @@ void getCommand()
       stopSampling();
       sampling = false;
       samplingDone = false;
+      powerSampling = false;
       connectComputer(false);
       runmode = 0;
       calcFFT = false;
@@ -808,9 +824,9 @@ void getCommand()
       }
       else if (c2 == 'v') //Ignore voltage detection
       {
-        #ifdef DEBUG
-          SerialUSB1.println("Ignoring Voltage Level");
-        #endif
+#ifdef DEBUG
+        SerialUSB1.println("Ignoring Voltage Level");
+#endif
         voltage_detected = true;
       }
     }
@@ -925,6 +941,7 @@ void timeSync()
     display.setCursor(0, 0);
     display.println("Time Syncronized");
     display.display();
+    connectComputer(computerConnected);
   }
 }
 
@@ -935,7 +952,7 @@ void timeSync()
 float calcVRMS()
 {
   v_rms = ACS_VRMS;
-  uint32_t calib_Code = 21280;                  //Calibration Factor
+  uint32_t calib_Code = 21280;              //Calibration Factor
   float exp_RMS = 0.1784;                   //Expected Input VRMS from Calibration
   float conv_factor = exp_RMS / calib_Code; //Actual Sensitivity
 

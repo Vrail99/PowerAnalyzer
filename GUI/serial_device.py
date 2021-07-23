@@ -1,5 +1,3 @@
-from os import execl
-from matplotlib.animation import AVConvBase
 import serial
 import time
 from serial.serialutil import SerialTimeoutException, SerialException
@@ -29,7 +27,7 @@ class SerialBus:
         try:
             if (self.deviceOpen()):  # If open: close port and reopen with timings
                 self.sBus.close()
-                time.sleep(1)  # Wait for 1s
+                time.sleep(0.5)  # Wait for 1s
             self.sBus = serial.Serial(port, timeout=self.readTimeout,
                                       write_timeout=self.writeTimeout, baudrate=115200)
 
@@ -37,7 +35,8 @@ class SerialBus:
             self.linereader = ReadLine(self.sBus)
             # Check if the port is correct
             try:
-                # self.writeString('x')
+                self.writeString('x')
+                time.sleep(0.25)
                 self.writeString('ci')
                 answer = self.linereader.readline().decode(
                     'utf-8').rstrip()  # Remove any control-characters
@@ -68,6 +67,8 @@ class SerialBus:
     def closePort(self) -> None:
         """Closes the port, if possible"""
         try:
+            self.writeString('cd')
+            self.writeString('bf')
             self.sBus.close()
         except:
             print("Error! Port cannot be closed")
@@ -144,13 +145,17 @@ class SerialBus:
         if (self.deviceOpen()):
             try:
                 k = str(self.linereader.readline().decode(dec))
+            except SerialException as e:
+                print(e)
+            except AttributeError as e:
+                print(e)
             except SerialTimeoutException:
                 print("Timout while reading string. (Serial bus timed out)")
 
         return k
 
     # Write Functions
-    def writeEEPROMValue(self, address: str, value: int, mask: str, pos: str) -> None:
+    def writeEEPROMValue(self, address: str, value: int, mask: str, pos: str) -> int:
         """
         Writes a value to the EEPROM of the ACS71020
 
@@ -160,6 +165,8 @@ class SerialBus:
         value   -- EEPROM Value \n
         mask    -- Value Mask \n
         pos     -- Position of LSB of value
+
+        Returns 1 if successful, 0 otherwise
         """
         if (self.deviceOpen()):
             try:
@@ -237,7 +244,7 @@ class SerialBus:
         """Deletes input buffer and reconnects to clear all buffered Data"""
         if self.deviceOpen():
             self.linereader.flush()
-            self.openPort(self.currPort)
+            self.sBus.reset_input_buffer()
 
     def inwaiting(self) -> tuple[int, int]:
         """Returns a tuple of in-waiting in serial bus and buffered data in linereader helperclass
@@ -270,9 +277,11 @@ class ReadLine:
         self.s = s
         self.stopped = False
 
-    def readline(self) -> str:
+    def readline(self) -> bytearray:
         """Reads a Line from the Serial bus, without a newline character.
         reads a maximum of 4096 bytes at once.
+
+        Returns a bytearray with the line
         """
         self.counter = 0
         i = self.buf.find(b"\n")

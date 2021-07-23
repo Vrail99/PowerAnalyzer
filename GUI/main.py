@@ -5,6 +5,7 @@
 import serial_device
 import tkinter as tk
 from tkinter import ttk
+import time
 
 # Own modules
 from settingsPage import SettingsPage
@@ -25,7 +26,7 @@ style.use('ggplot')
 
 
 class mainWindow(tk.Tk):
-    """tkinter.Tk() backbone"""
+    """tkinter.Tk() backend"""
 
     def __init__(self, pages: list, *args, **kwargs) -> None:
         """Initializes 
@@ -243,7 +244,6 @@ class mainWindow(tk.Tk):
             self.pages[LivePage].stopRead_btn["state"] = tk.NORMAL
             self.pages[LivePage].timeSync_btn["state"] = tk.NORMAL
             self.pages[SettingsPage].readBtn["state"] = tk.NORMAL
-            #self.pages[SettingsPage].writeBtn["state"] = tk.NORMAL
 
     def _openScope(self) -> None:
         """Opens the Oscilloscope-Window"""
@@ -271,7 +271,8 @@ class mainWindow(tk.Tk):
         self.pages[LivePage].stopRead_btn["state"] = tk.DISABLED
         self.pages[LivePage].timeSync_btn["state"] = tk.DISABLED
         self.pages[SettingsPage].readBtn["state"] = tk.DISABLED
-        #self.pages[SettingsPage].writeBtn["state"] = tk.DISABLED
+        self.pages[SettingsPage].writeBtn["state"] = tk.DISABLED
+        self.pages[SettingsPage].init = False
 
     def _searchSerialPorts(self) -> None:
         """Searches all available Serial Ports and add them to the menubar and the combobox"""
@@ -336,6 +337,7 @@ class mainWindow(tk.Tk):
             pass
         if (self.getSerialBus().deviceOpen()):
             self.sBus.writeString('x')
+            time.sleep(0.25)
             self.sBus.writeString('bf')
             self.sBus.closePort()
 

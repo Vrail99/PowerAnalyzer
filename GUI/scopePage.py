@@ -7,6 +7,7 @@ import _thread
 from tkinter import ttk
 import tkinter as tk
 import numpy as np
+from serial.serialposix import Serial
 import utils
 import tkinter.filedialog
 import serial_device
@@ -30,9 +31,8 @@ class ScopeWindow(tk.Toplevel):
         self.name = "Scope"
 
         # Oscilloscope Variables
-        # Sampling time, default: 200ms (10 50Hz Periods)
-        # Sampling Time: 200ms (10 Cycles of 50 Hz)
-        # Bin-Width: 5Hz
+        # Sampling time, default: 200ms (10 50Hz Periods) -> Standard
+        # Bin-Width: 5Hz -> From sampling time
         # Resulting Sample Size with 31 250 Hz Sampling Frequency: 6250 Sa
         self.sampleWindow = 200  # ms
         self.sampleFrequency = 31250  # Hz
@@ -61,11 +61,11 @@ class ScopeWindow(tk.Toplevel):
         self.timeRange = 200  # Milliseconds
         self.freq_range = 2000  # Hz
 
-        self.runCodeThread = False
+        self.runCodeThread = False  # Status flag for readCode Thread
 
         # Plotfigure and axes
         self.plotfig = plt.Figure(
-            figsize=(800 * 0.0104166667, 600 * 0.0104166667), dpi=100)
+            figsize=(860 * 0.0104166667, 400 * 0.0104166667), dpi=100)
         self.vc_plot = self.plotfig.add_subplot(2, 1, 1)
         self.ic_plot = self.plotfig.add_subplot(2, 1, 2)
         self.plotfig.patch.set_facecolor('#d9d9d9')
@@ -98,13 +98,20 @@ class ScopeWindow(tk.Toplevel):
         self.modevar = tk.IntVar()
         self.modeSelectV = ttk.Radiobutton(radioFrm, text="Voltage", style="TRadiobutton",
                                            variable=self.modevar, value=0, width=10,
-                                           command=self._changeMode).pack()
+                                           command=self._changeMode)
+        self.modeSelectV.pack()
         self.modeSelectI = ttk.Radiobutton(radioFrm, text="Current", style="TRadiobutton",
                                            variable=self.modevar, value=1, width=10,
-                                           command=self._changeMode).pack()
+                                           command=self._changeMode)
+        self.modeSelectI.pack()
         self.modeSelectB = ttk.Radiobutton(radioFrm, text="Both", style="TRadiobutton",
                                            variable=self.modevar, value=2, width=10,
-                                           command=self._changeMode).pack()
+                                           command=self._changeMode)
+        self.modeSelectB.pack()
+        self.modeSelectP = ttk.Radiobutton(radioFrm, text="Power", style="TRadiobutton",
+                                           variable=self.modevar, value=4, width=10,
+                                           command=self._changeMode)
+        self.modeSelectP.pack()
 
         self.endButton = ttk.Button(
             self.scopeFrame, text="Exit", command=self.closeScope)
@@ -115,26 +122,23 @@ class ScopeWindow(tk.Toplevel):
         canv.get_tk_widget().pack(fill="both")
         self.endButton.pack()
 
-    #
-    # Changes voltage mode over the radio buttons
-    #
-    #
-    def _changeMode(self):
+    def _changeMode(self) -> None:
+        """Changes the mode of showPlots"""
         self.showPlots = self.modevar.get()
 
-    #
-    # Animation Function for the plot
-    # Only displays data if a reading-thread is activated and samplingDone-flag is set
-    # Clears the plot
-    #   @param interval
-    #               Update interval for plots in milliseconds
-    #
-    def _animate(self, interval):
+    def _animate(self, interval: int) -> None:
+        """Animation Function for the plot
+         Only displays data if a reading-thread is activated and samplingDone-flag is set
+        Clears the plot
+
+        Keyword Arguments:
+
+        interval -- Update interval for plots in milliseconds"""
         if self.runCodeThread:
             if self.samplingDone:
                 self.vc_plot.clear()
                 self.ic_plot.clear()
-                if (self.showPlots == 0):  # Voltage mode
+                if (self.showPlots == 0 or self.showPlots == 4):  # Voltage mode / Power Mode
                     codeArray = np.array(self.vcodes)
                     xAxis, yAxis = utils.calculateFFT(
                         codeArray, self.sampleFrequency)
@@ -261,17 +265,18 @@ class ScopeWindow(tk.Toplevel):
                 self.vcodes2 = []
                 self.icodes2 = []
 
-    #
-    #  Thread-Function for reading Codes.
-    #  @param mode
-    #          string to determine the runmode: 'vc': Voltage, 'ic': Current, 'bc': Both
-    #
-    def _readCodes(self, mode):
-        print("Reading Thread Nr. started", _thread.get_ident())
+    def _readCodes(self, mode: str) -> None:
+        """
+        Thread-Function for reading Codes.
+
+        Keyword Arguments:
+
+        mode -- string to determine the runmode: 'vc': Voltage, 'ic': Current, 'bc': Both
+        """
+
         # Activate Serial transmission of icodes and/or vcodes
         self.sBus.writeString(mode)
-        time.sleep(1e-9)  # Wait for the first values, for efficient buffer use
-        # Open File for saving values
+
         while self.runCodeThread:  # When the thread is running
             data = self.sBus.readLine()  # Read a line
             if (data == 0 or data == None):
@@ -299,8 +304,12 @@ class ScopeWindow(tk.Toplevel):
                         ic = 0
                         print("Skipped value")
                         continue
+
                     a = self._appendIcode(ic)
-                    b = self._appendVcode(vc)
+                    if mode == 'pc':
+                        b = self._appendPcode(vc)
+                    else:
+                        b = self._appendVcode(vc)
 
                 except ValueError as e:
                     print("No Value read, only:", tmp, e)
@@ -310,15 +319,16 @@ class ScopeWindow(tk.Toplevel):
                     print("Error: Unicode Decode Error", e)
 
         self.sBus.writeString('x')
-        print("Reading Thread Nr. ended", _thread.get_ident())
         self.startBtn["state"] = tk.NORMAL
 
-    #
-    # Adds an VCode. When sample buffer is full, sets samplingDone flag
-    #  @param code
-    #           int vcode to be appended
-    #
-    def _appendVcode(self, code):
+    def _appendVcode(self, code: int) -> float:
+        """Adds a VCode. When sample buffer is full, sets samplingDone flag
+
+        Keyword Arguments:
+
+        code -- integer vcode to be appended
+
+        Returns the Integer value, if buffer is full and the converted number, if successful"""
         if len(self.vcodes2) < self.storageWidth:
             code = round(utils.ConvertSignedFixedPoint(
                 code, 16, 17) * self.ratedVoltage, self.precision)
@@ -330,13 +340,14 @@ class ScopeWindow(tk.Toplevel):
 
         return code
 
-    #
-    # Adds an ICode. When sample buffer is full, sets samplingDone flag
-    #  @param code
-    #           int icode to be appended
-    #
-    #
-    def _appendIcode(self, code):
+    def _appendIcode(self, code: int) -> float:
+        """Adds an ICode. When sample buffer is full, sets samplingDone flag
+
+        Keyword Arguments:
+
+        code -- integer icode to be appended
+
+        Returns the Integer value, if buffer is full and the converted number, if successful"""
         if len(self.icodes2) < self.storageWidth:
             code = round(utils.ConvertSignedFixedPoint(
                 code, 15, 17) * self.ratedCurrent, self.precision)
@@ -348,20 +359,39 @@ class ScopeWindow(tk.Toplevel):
 
         return code
 
-    #
-    # Starts a new thread for reading codes, either in voltage, current or both mode
-    #
-    def _startCodes(self):
+    def _appendPcode(self, code: int) -> float:
+        """Adds a Power Code. When sample buffer is full, sets samplingDone flag
+
+        Keyword Arguments:
+
+        code -- integer pcode to be appended
+
+        Returns the Integer value, if buffer is full and the converted number, if successful"""
+        if len(self.vcodes2) < self.storageWidth:
+            code = round(utils.ConvertSignedFixedPoint(
+                code, 15, 17) * self.ratedCurrent*self.ratedVoltage, self.precision)
+            self.vcodes2.append(code)
+
+        elif (self.showPlots == 4):
+            self.vcodes = self.vcodes2
+            self.samplingDone = True
+
+        return code
+
+    def _startCodes(self) -> None:
+        """Starts a new thread for reading codes, either in voltage, current or both mode"""
         if (not self.runCodeThread):
+            self._setRadioState(tk.DISABLED)
             self.fullFFT = []
-            self.logfile = open(
-                "logfile_" + str(self.logfile_counter) + ".txt", "w")
+            self.logfile = open("logfile_" + str(self.logfile_counter) + ".txt", "w")
             self.fullTHD = 0
             self.thdCounter = 0
-            if (self.showPlots == 0):
+            if self.showPlots == 0:
                 mode = 'vc'
             elif self.showPlots == 1:
                 mode = 'ic'
+            elif self.showPlots == 4:
+                mode = 'pc'  # PCode- mode
             else:
                 mode = 'bc'
             self.runCodeThread = True
@@ -369,26 +399,22 @@ class ScopeWindow(tk.Toplevel):
             self.sBus.stopReading(False)
             self.startBtn["state"] = tk.DISABLED
 
-    #
-    # Stops the running thread and stops Teensy
-    #
     def _stopCodes(self):
+        """Stops the running thread and stops Teensy"""
         try:
             self.logfile.close()
-            self.i += 1
+            self.logfile_counter += 1
         except:
             pass
-        self.runCodeThread = False
+        self._setRadioState(tk.NORMAL)
+        self.runCodeThread = False  # Stops the runCode Thread
         self.sBus.stopReading(True)
         self.sBus.writeString('x')
         time.sleep(.5)
         self.sBus.flushBus()
-        self.logfile_counter += 1
 
-    #
-    # Captures a waveform
-    #
     def _saveWaveform(self):
+        """Saves the current waveform to a file"""
         if not self.runCodeThread:
             file = tkinter.filedialog.asksaveasfile()
             if (self.showPlots == 0):  # Voltage waveform
@@ -411,8 +437,21 @@ class ScopeWindow(tk.Toplevel):
                     file.write(str(v)+";"+str(i)+"\n")
             file.close()
 
-    #
-    # Closes the scope view
-    #
     def closeScope(self):
+        """Closes the scope view"""
         self.destroy()
+
+    def _setRadioState(self, s: str) -> None:
+        """Sets the state of the Radiobuttons to s
+
+        Keyword Arguments:
+
+        s -- state for the radiobuttons (e.g. tk.NORMAL, tk.DISABLED)"""
+
+        try:
+            self.modeSelectV['state'] = s
+            self.modeSelectB['state'] = s
+            self.modeSelectI['state'] = s
+            self.modeSelectP['state'] = s
+        except:
+            pass

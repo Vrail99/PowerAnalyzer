@@ -1,4 +1,3 @@
-from serial_device import SerialBus
 import tkinter as tk
 from tkinter import ttk
 import utils
@@ -194,7 +193,3 @@ class SettingsPage(ttk.Frame):
         time.sleep(0.25)
         for key in self.EEPROMDict.keys():
             self._readValue(key)
-
-        # Enable normal Operation
-        time.sleep(0.25)
-        self.sBus.writeString("bf")
