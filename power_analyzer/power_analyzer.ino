@@ -815,7 +815,7 @@ void connectComputer(bool conn)
   }
   else
   {
-    SerialUSB1.println("Computer");
+    SerialUSB1.println("Computer disconnected");
   }
 }
 

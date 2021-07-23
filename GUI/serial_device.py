@@ -1,6 +1,8 @@
+from os import execl
 from matplotlib.animation import AVConvBase
 import serial
 import time
+from serial.serialutil import SerialTimeoutException, SerialException
 import serial.tools.list_ports
 import tkinter.messagebox
 
@@ -15,7 +17,15 @@ class SerialBus:
         self.currPort = None  # Current Port
         self.port_list = []  # Empty Port List
 
-    def openPort(self, port: str):
+    def openPort(self, port: str) -> int:
+        """Opens the port. Reopens the port, if it was already open.
+        Performs a handshake with the teensy to check if the connection can be established.
+
+        Keyword Arguments:
+
+        port -- String of the port to connect to.
+
+        Returns 1 if successful, or 0 if an error occurred."""
         try:
             if (self.deviceOpen()):  # If open: close port and reopen with timings
                 self.sBus.close()
@@ -27,14 +37,18 @@ class SerialBus:
             self.linereader = ReadLine(self.sBus)
             # Check if the port is correct
             try:
+                # self.writeString('x')
                 self.writeString('ci')
-                answer = self.linereader.readline().decode('utf-8').rstrip()
+                answer = self.linereader.readline().decode(
+                    'utf-8').rstrip()  # Remove any control-characters
                 if (answer != "tconn"):
                     print("Error connecting")
                     self.sBus.close()
                     return 0
+                else:
+                    print("Connected")
 
-            except serial.serialutil.SerialTimeoutException as e:
+            except SerialTimeoutException as e:
                 tkinter.messagebox.showinfo("Info",
                                             "Timeout. Connection with Teensy-port '"+str(self.currPort) +
                                             "' not possible.\n Maybe a wrong port?")
@@ -45,172 +59,196 @@ class SerialBus:
             print("Error, couldn't open Serial port. "
                   "Maybe already connected in another program?")
             return 0
-        except serial.serialutil.SerialException as e:
+        except SerialException as e:
             print("The Port does not exist", e)
             return 0
 
         return 1
 
-    def closePort(self):
+    def closePort(self) -> None:
+        """Closes the port, if possible"""
         try:
             self.sBus.close()
         except:
             print("Error! Port cannot be closed")
 
-    def deviceOpen(self):
+    def deviceOpen(self) -> bool:
+        """Returns the state of the connection"""
         return self.sBus.is_open
 
     # Read-Functions
-    def readIntValue(self, address=None):
-        value = -1
+    def readIntValue(self, address: str = None) -> int:
+        """Read a value from an address
+
+        Keyword Arguments:
+
+        address -- The address to read a value from
+
+        Returns the integer value from the teensy or None"""
+        value = None
         if (self.deviceOpen() and address != None):
             try:
                 self.sBus.write(address.encode())
+                time.sleep(0.01)
+            except SerialTimeoutException:
+                print("Error writing a string to the Teensy")
+
+            try:
                 value = int(self.linereader.readline())
-            except:
-                print("Error while reading/writing integer value")
+            except SerialTimeoutException:
+                print("Error while reading value")
                 print("{}\t{}".format(address, value))
+            except TypeError as e:
+                print(e)
+
         return value
 
-    def readEEPROMValue(self, address, mask, pos):
+    def readEEPROMValue(self, address: str, mask: str, pos: str) -> int:
+        """Reads a value from the EEPROM of the ACS71020
+
+        Keyword Arguments:
+
+        address -- the adress to be read from \n
+        mask    -- the mask for the value \n
+        pos     -- the position of the LSB"""
         value = -999
         if (self.deviceOpen()):
             try:
-                stri = "ev<" + address + " " + mask + " " + pos + ">"
+                stri = "ev<" + str(address) + " " + str(mask) + " " + str(pos) + ">"
                 self.sBus.write(stri.encode())
+            except SerialTimeoutException as e:
+                print("Timeout while writing String to Teensy")
+                return None
+            except TypeError as e:
+                print(e)
+                return None
+            try:
                 value = int(self.linereader.readline())
-            except:
-                print("Error while reading/writing EEPROM value")
-                print("{}\t{}".format(address, value))
+            except SerialTimeoutException as e:
+                print("Timeout while reading EEPROM value")
+                print(stri)
+            except TypeError as e:
+                print(e)
 
         return value
 
-    # Just reads a line
-    def readLine(self):
-        k = 0
+    def readLine(self, dec: str = 'utf-8') -> str:
+        """Reads a line from the serial bus.
+
+        Keyword Arguments:
+
+        dec -- the encoding as a string(default: utf-8)
+
+        Returns the string or None, if reading failed"""
+        k = None
         if (self.deviceOpen()):
             try:
-                k = self.linereader.readline()
-            except TimeoutError:
+                k = str(self.linereader.readline().decode(dec))
+            except SerialTimeoutException:
                 print("Timout while reading string. (Serial bus timed out)")
 
         return k
 
-    # Write-Functions
+    # Write Functions
+    def writeEEPROMValue(self, address: str, value: int, mask: str, pos: str) -> None:
+        """
+        Writes a value to the EEPROM of the ACS71020
 
-    #
-    # Writes an EEPROMValue
-    #   @param adress   Address of EEPROM-Register
-    #   @param value    EEPROM Value
-    #   @param mask     Value Mask
-    #   @param pos      Position of LSB of value
-    #
+        Keyword Arguments:
 
-    def writeEEPROMValue(self, adress, value, mask, pos):
+        adress  -- Address of EEPROM-Register \n
+        value   -- EEPROM Value \n
+        mask    -- Value Mask \n
+        pos     -- Position of LSB of value
+        """
         if (self.deviceOpen()):
             try:
-                stream = 'ww<' + adress + ' ' + \
-                    str(value) + ' ' + mask + ' ' + str(pos) + '>'
+                stream = 'ww<' + address + ' ' + str(value) + ' ' + mask + ' ' + str(pos) + '>'
                 print(stream)
                 self.sBus.write(stream.encode())
-            except:
-                print("Error while writing")
+            except SerialTimeoutException:
+                print("Timeout while writing")
+                return 0
+            except UnicodeError:
+                print("Encoding not successful")
+                return 0
         else:
             print("Cannot write: device not open")
             return 0
+        return 1
 
-    #
-    # Writes a String to the serial Bus
-    #   @param string   String to be sent
-    #
-    def writeString(self, string):
+    def writeString(self, string: str) -> None:
+        """Writes a string to the serial Bus
+
+        Keyword Arguments:
+
+        string -- the requested string"""
         if (self.deviceOpen()):
             try:
                 self.sBus.write(string.encode())
-            except serial.SerialTimeoutException:
+            except SerialTimeoutException:
                 print(
                     "Timeout while writing. Not able to reach the teensy or is it busy?")
-            except serial.SerialException as e:
+            except SerialException as e:
                 print("Serial Error", e)
 
     # Getter
 
-    #
-    # Makes use of serial.tools to search for available serial ports
-    #   @return     port list
-    #
-    def getPorts(self):
-        self.port_list = [port[0]
+    def getPorts(self) -> list[str]:
+        """Reads all ports connected to the computer
+
+        Returns a list with all port names, compatible to open with openPort() function"""
+        self.port_list = [str(port[0])
                           for port in serial.tools.list_ports.comports()]
         if len(self.port_list) == 0:
             self.port_list.append("No serial port found")
 
         return self.port_list
 
-    #
-    # Returns the current Port
-    #   @return     current port
-    #
     def getCurrentPort(self):
+        """Returns the current connected port"""
         return self.currPort
 
     # Setter
 
-    #
-    # Sets the read timeout of the serial bus
-    #   @param t    time in seconds
-    #
-    def setReadTimeout(self, t):
+    def setReadTimeout(self, t: int = 2) -> None:
+        """Sets the read timeout of the serial bus
+
+        Keyword Arguments:
+
+        t -- integer timeout in seconds (default: 2)"""
         self.readTimeout = t
         self.openPort(self.currPort)
         print("Read Timeout set to ", t, "seconds")
 
-    #
-    # Sets the write timeout of the serial bus
-    #   @param t    time in seconds
-    #
-    def setWriteTimeout(self, t):
+    def setWriteTimeout(self, t: int = 2) -> None:
+        """Sets the write timeout of the serial bus
+
+        Keyword arguments:
+
+        t -- integer timeout in seconds (default: 2)"""
         self.writeTimeout = t
         self.openPort(self.currPort)
         print("Write Timeout set to ", t, "seconds")
 
     # Auxiliary
 
-    #
-    #   Reads all data out of the bus
-    #
-    def flushBus(self):
-        try:
-            self.linereader.flush()
-            if (self.sBus.in_waiting > 0):
-                self.sBus.read(self.sBus.in_waiting)
-        except OSError as e:
-            print("OS-Error", e)
-
-    #
-    # Prints in-waiting in serial bus and linereader helperclass
-    #
-    def inwaiting(self):
+    def flushBus(self) -> None:
+        """Deletes input buffer and reconnects to clear all buffered Data"""
         if self.deviceOpen():
-            print("in_waiting/in Buf:", self.sBus.in_waiting,
-                  "/", self.linereader.getBufLen())
+            self.linereader.flush()
+            self.openPort(self.currPort)
 
-    #
-    # Stops reading of serial bus
-    #
-    def stopReading(self, stop):
+    def inwaiting(self) -> tuple[int, int]:
+        """Returns a tuple of in-waiting in serial bus and buffered data in linereader helperclass
+
+        (in_waiting, buffered)"""
+        if self.deviceOpen():
+            return (self.sBus.in_waiting, self.linereader.getBufLen())
+
+    def stopReading(self, stop: bool) -> None:
+        """Stops reading of linereader helperclass"""
         self.linereader.stopReading(stop)
-
-    #
-    # Reads all in-waiting symbols
-    #   @return number of bytes in serial bus and linereader helperclass
-    #
-    def getInWaiting(self):
-        try:
-            return self.sBus.in_waiting + self.linereader.getBufLen()
-        except AttributeError as e:
-            print("None Type", e)
-            return 0
 
 
 ##############################################################################################################
@@ -219,12 +257,23 @@ class SerialBus:
 
 
 class ReadLine:
-    def __init__(self, s):
+    """Linereader Helperclass, which introduces a buffer for incoming values. It is
+    faster than the built-in function readline of pyserial."""
+
+    def __init__(self, s: serial.Serial):
+        """Inits the helperclass with an empty buffer
+
+        Keyword Arguments:
+
+        s -- the serialBus instance"""
         self.buf = bytearray()
         self.s = s
         self.stopped = False
 
-    def readline(self):
+    def readline(self) -> str:
+        """Reads a Line from the Serial bus, without a newline character.
+        reads a maximum of 4096 bytes at once.
+        """
         self.counter = 0
         i = self.buf.find(b"\n")
         if i >= 0:
@@ -250,18 +299,16 @@ class ReadLine:
                         self.counter += 1
                     else:
                         self.counter = 0
-                        raise serial.serialutil.SerialTimeoutException
+                        raise SerialTimeoutException
 
-    def getBufLen(self):
-        if (self.buf.find(b"\n") >= 0):
-            return len(self.buf)
-        else:
-            self.buf = bytearray()
+    def getBufLen(self) -> int:
+        """Returns the number of bytes in the buffer"""
+        return len(self.buf)
 
-        return 0
-
-    def flush(self):
+    def flush(self) -> None:
+        """Empties the buffer"""
         self.buf = bytearray()
 
     def stopReading(self, stop):
+        """Defines if the readline function returns a value when reading a stream """
         self.stopped = stop

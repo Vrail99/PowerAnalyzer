@@ -2,7 +2,6 @@
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.animation as anim
 import matplotlib.pyplot as plt
-from datetime import datetime, timezone
 import time
 import _thread
 from tkinter import ttk
@@ -10,17 +9,26 @@ import tkinter as tk
 import numpy as np
 import utils
 import tkinter.filedialog
-
-
-# matplotlib.use('TkAgg')
+import serial_device
 
 
 class ScopeWindow(tk.Toplevel):
-    def __init__(self, controller, bus, updateRate=31):
+    """A tkinter toplevel instance for viewing the waveforms."""
+
+    def __init__(self, controller: ttk.Frame, bus: serial_device.SerialBus) -> None:
+        """Inits the Function
+
+        Keyword Arguments:
+
+        controller -- the backend class with base functionality
+
+        bus -- the serial bus instance for communication
+        """
         super().__init__(controller, background='#d9d9d9', takefocus=True)
         self.contr = controller
         self.sBus = bus
         self.name = "Scope"
+
         # Oscilloscope Variables
         # Sampling time, default: 200ms (10 50Hz Periods)
         # Sampling Time: 200ms (10 Cycles of 50 Hz)
@@ -54,50 +62,53 @@ class ScopeWindow(tk.Toplevel):
         self.freq_range = 2000  # Hz
 
         self.runCodeThread = False
+
         # Plotfigure and axes
         self.plotfig = plt.Figure(
-            figsize=(600 * 0.0104166667, 400 * 0.0104166667), dpi=100)
+            figsize=(800 * 0.0104166667, 600 * 0.0104166667), dpi=100)
         self.vc_plot = self.plotfig.add_subplot(2, 1, 1)
         self.ic_plot = self.plotfig.add_subplot(2, 1, 2)
-
         self.plotfig.patch.set_facecolor('#d9d9d9')
 
         self._guiSetup()
+
         self.ani = anim.FuncAnimation(
             self.plotfig, self._animate, interval=self.animRate)
 
-    def _guiSetup(self):
-        topFrame = ttk.Frame(self)
-        radioFrm = ttk.Frame(topFrame)
-        btnFrm = ttk.Frame(topFrame)
-        self.scopeFrame = ttk.Frame(self)
+    def _guiSetup(self) -> None:
+        """Sets up UI Elements"""
+        topFrame = ttk.Frame(self, style="TFrame")
+        radioFrm = ttk.Frame(topFrame, style="TFrame")
+        btnFrm = ttk.Frame(topFrame, style="TFrame")
+        self.scopeFrame = ttk.Frame(self, style="TFrame")
         topFrame.pack()
         btnFrm.pack(side=tk.LEFT, pady=5, padx=5)
         radioFrm.pack(side=tk.LEFT, pady=5, padx=5)
         self.scopeFrame.pack()
 
         self.startBtn = ttk.Button(
-            btnFrm, text="Start", command=self._startCodes)
-        self.stopBtn = ttk.Button(btnFrm, text="Stop", command=self._stopCodes)
+            btnFrm, text="Start", style="TButton", command=self._startCodes)
+        self.stopBtn = ttk.Button(btnFrm, text="Stop", style="TButton", command=self._stopCodes)
         self.saveBtn = ttk.Button(
-            btnFrm, text="Save", command=self._saveWaveform)
+            btnFrm, text="Save", style="TButton", command=self._saveWaveform)
         self.startBtn.pack()
         self.stopBtn.pack()
         self.saveBtn.pack()
 
         self.modevar = tk.IntVar()
-        self.modeSelectV = ttk.Radiobutton(radioFrm, text="Voltage",
+        self.modeSelectV = ttk.Radiobutton(radioFrm, text="Voltage", style="TRadiobutton",
                                            variable=self.modevar, value=0, width=10,
                                            command=self._changeMode).pack()
-        self.modeSelectI = ttk.Radiobutton(radioFrm, text="Current",
+        self.modeSelectI = ttk.Radiobutton(radioFrm, text="Current", style="TRadiobutton",
                                            variable=self.modevar, value=1, width=10,
                                            command=self._changeMode).pack()
-        self.modeSelectB = ttk.Radiobutton(radioFrm, text="Both",
+        self.modeSelectB = ttk.Radiobutton(radioFrm, text="Both", style="TRadiobutton",
                                            variable=self.modevar, value=2, width=10,
                                            command=self._changeMode).pack()
 
         self.endButton = ttk.Button(
             self.scopeFrame, text="Exit", command=self.closeScope)
+
         # FFT Plot:
         canv = FigureCanvasTkAgg(self.plotfig, self.scopeFrame)
         canv.draw()
@@ -268,7 +279,7 @@ class ScopeWindow(tk.Toplevel):
                 continue
             else:
                 # if multiple values are sent
-                tmp = data.decode('utf-8').split(',')
+                tmp = data.split(',')
                 try:
                     ic = 0
                     vc = 0
@@ -371,7 +382,6 @@ class ScopeWindow(tk.Toplevel):
         self.sBus.stopReading(True)
         self.sBus.writeString('x')
         time.sleep(.5)
-        self.sBus.writeString('bf')
         self.sBus.flushBus()
         self.logfile_counter += 1
 
