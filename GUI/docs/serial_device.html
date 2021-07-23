@@ -1,0 +1,181 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module serial_device</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>serial_device</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/Users/macbook/Documents/PowerAnalyzer/GUI/serial_device.py">/Users/macbook/Documents/PowerAnalyzer/GUI/serial_device.py</a></font></td></tr></table>
+    <p></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="serial.html">serial</a><br>
+</td><td width="25%" valign=top><a href="time.html">time</a><br>
+</td><td width="25%" valign=top><a href="tkinter.html">tkinter</a><br>
+</td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="builtins.html#object">builtins.object</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="serial_device.html#ReadLine">ReadLine</a>
+</font></dt><dt><font face="helvetica, arial"><a href="serial_device.html#SerialBus">SerialBus</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="ReadLine">class <strong>ReadLine</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#ReadLine">ReadLine</a>(s:&nbsp;serial.serialposix.Serial)<br>
+&nbsp;<br>
+Linereader&nbsp;Helperclass,&nbsp;which&nbsp;introduces&nbsp;a&nbsp;buffer&nbsp;for&nbsp;incoming&nbsp;values.&nbsp;It&nbsp;is<br>
+faster&nbsp;than&nbsp;the&nbsp;built-in&nbsp;function&nbsp;readline&nbsp;of&nbsp;pyserial.<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="ReadLine-__init__"><strong>__init__</strong></a>(self, s: serial.serialposix.Serial)</dt><dd><tt>Inits&nbsp;the&nbsp;helperclass&nbsp;with&nbsp;an&nbsp;empty&nbsp;buffer<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:<br>
+&nbsp;<br>
+s&nbsp;--&nbsp;the&nbsp;serialBus&nbsp;instance</tt></dd></dl>
+
+<dl><dt><a name="ReadLine-flush"><strong>flush</strong></a>(self) -&gt; None</dt><dd><tt>Empties&nbsp;the&nbsp;buffer</tt></dd></dl>
+
+<dl><dt><a name="ReadLine-getBufLen"><strong>getBufLen</strong></a>(self) -&gt; int</dt><dd><tt>Returns&nbsp;the&nbsp;number&nbsp;of&nbsp;bytes&nbsp;in&nbsp;the&nbsp;buffer</tt></dd></dl>
+
+<dl><dt><a name="ReadLine-readline"><strong>readline</strong></a>(self) -&gt; bytearray</dt><dd><tt>Reads&nbsp;a&nbsp;Line&nbsp;from&nbsp;the&nbsp;Serial&nbsp;bus,&nbsp;without&nbsp;a&nbsp;newline&nbsp;character.<br>
+reads&nbsp;a&nbsp;maximum&nbsp;of&nbsp;4096&nbsp;bytes&nbsp;at&nbsp;once.<br>
+&nbsp;<br>
+Returns&nbsp;a&nbsp;bytearray&nbsp;with&nbsp;the&nbsp;line</tt></dd></dl>
+
+<dl><dt><a name="ReadLine-stopReading"><strong>stopReading</strong></a>(self, stop)</dt><dd><tt>Defines&nbsp;if&nbsp;the&nbsp;readline&nbsp;function&nbsp;returns&nbsp;a&nbsp;value&nbsp;when&nbsp;reading&nbsp;a&nbsp;stream</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="SerialBus">class <strong>SerialBus</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="SerialBus-__init__"><strong>__init__</strong></a>(self)</dt><dd><tt>Initialize&nbsp;self.&nbsp;&nbsp;See&nbsp;help(type(self))&nbsp;for&nbsp;accurate&nbsp;signature.</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-closePort"><strong>closePort</strong></a>(self) -&gt; None</dt><dd><tt>Closes&nbsp;the&nbsp;port,&nbsp;if&nbsp;possible</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-deviceOpen"><strong>deviceOpen</strong></a>(self) -&gt; bool</dt><dd><tt>Returns&nbsp;the&nbsp;state&nbsp;of&nbsp;the&nbsp;connection</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-flushBus"><strong>flushBus</strong></a>(self) -&gt; None</dt><dd><tt>Deletes&nbsp;input&nbsp;buffer&nbsp;and&nbsp;reconnects&nbsp;to&nbsp;clear&nbsp;all&nbsp;buffered&nbsp;Data</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-getCurrentPort"><strong>getCurrentPort</strong></a>(self)</dt><dd><tt>Returns&nbsp;the&nbsp;current&nbsp;connected&nbsp;port</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-getPorts"><strong>getPorts</strong></a>(self) -&gt; list</dt><dd><tt>Reads&nbsp;all&nbsp;ports&nbsp;connected&nbsp;to&nbsp;the&nbsp;computer<br>
+&nbsp;<br>
+Returns&nbsp;a&nbsp;list&nbsp;with&nbsp;all&nbsp;port&nbsp;names,&nbsp;compatible&nbsp;to&nbsp;open&nbsp;with&nbsp;<a href="#SerialBus-openPort">openPort</a>()&nbsp;function</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-inwaiting"><strong>inwaiting</strong></a>(self) -&gt; tuple</dt><dd><tt>Returns&nbsp;a&nbsp;tuple&nbsp;of&nbsp;in-waiting&nbsp;in&nbsp;serial&nbsp;bus&nbsp;and&nbsp;buffered&nbsp;data&nbsp;in&nbsp;linereader&nbsp;helperclass<br>
+&nbsp;<br>
+(in_waiting,&nbsp;buffered)</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-openPort"><strong>openPort</strong></a>(self, port: str) -&gt; int</dt><dd><tt>Opens&nbsp;the&nbsp;port.&nbsp;Reopens&nbsp;the&nbsp;port,&nbsp;if&nbsp;it&nbsp;was&nbsp;already&nbsp;open.<br>
+Performs&nbsp;a&nbsp;handshake&nbsp;with&nbsp;the&nbsp;teensy&nbsp;to&nbsp;check&nbsp;if&nbsp;the&nbsp;connection&nbsp;can&nbsp;be&nbsp;established.<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:<br>
+&nbsp;<br>
+port&nbsp;--&nbsp;String&nbsp;of&nbsp;the&nbsp;port&nbsp;to&nbsp;connect&nbsp;to.<br>
+&nbsp;<br>
+Returns&nbsp;1&nbsp;if&nbsp;successful,&nbsp;or&nbsp;0&nbsp;if&nbsp;an&nbsp;error&nbsp;occurred.</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-readEEPROMValue"><strong>readEEPROMValue</strong></a>(self, address: str, mask: str, pos: str) -&gt; int</dt><dd><tt>Reads&nbsp;a&nbsp;value&nbsp;from&nbsp;the&nbsp;EEPROM&nbsp;of&nbsp;the&nbsp;ACS71020<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:<br>
+&nbsp;<br>
+address&nbsp;--&nbsp;the&nbsp;adress&nbsp;to&nbsp;be&nbsp;read&nbsp;from&nbsp;<br>
+&nbsp;<br>
+mask&nbsp;&nbsp;&nbsp;&nbsp;--&nbsp;the&nbsp;mask&nbsp;for&nbsp;the&nbsp;value&nbsp;<br>
+&nbsp;<br>
+pos&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--&nbsp;the&nbsp;position&nbsp;of&nbsp;the&nbsp;LSB</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-readIntValue"><strong>readIntValue</strong></a>(self, address: str = None) -&gt; int</dt><dd><tt>Read&nbsp;a&nbsp;value&nbsp;from&nbsp;an&nbsp;address<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:<br>
+&nbsp;<br>
+address&nbsp;--&nbsp;The&nbsp;address&nbsp;to&nbsp;read&nbsp;a&nbsp;value&nbsp;from<br>
+&nbsp;<br>
+Returns&nbsp;the&nbsp;integer&nbsp;value&nbsp;from&nbsp;the&nbsp;teensy&nbsp;or&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-readLine"><strong>readLine</strong></a>(self, dec: str = 'utf-8') -&gt; str</dt><dd><tt>Reads&nbsp;a&nbsp;line&nbsp;from&nbsp;the&nbsp;serial&nbsp;bus.<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:<br>
+&nbsp;<br>
+dec&nbsp;--&nbsp;the&nbsp;encoding&nbsp;as&nbsp;a&nbsp;string(default:&nbsp;utf-8)<br>
+&nbsp;<br>
+Returns&nbsp;the&nbsp;string&nbsp;or&nbsp;None,&nbsp;if&nbsp;reading&nbsp;failed</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-setReadTimeout"><strong>setReadTimeout</strong></a>(self, t: int = 2) -&gt; None</dt><dd><tt>Sets&nbsp;the&nbsp;read&nbsp;timeout&nbsp;of&nbsp;the&nbsp;serial&nbsp;bus<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:<br>
+&nbsp;<br>
+t&nbsp;--&nbsp;integer&nbsp;timeout&nbsp;in&nbsp;seconds&nbsp;(default:&nbsp;2)</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-setWriteTimeout"><strong>setWriteTimeout</strong></a>(self, t: int = 2) -&gt; None</dt><dd><tt>Sets&nbsp;the&nbsp;write&nbsp;timeout&nbsp;of&nbsp;the&nbsp;serial&nbsp;bus<br>
+&nbsp;<br>
+Keyword&nbsp;arguments:<br>
+&nbsp;<br>
+t&nbsp;--&nbsp;integer&nbsp;timeout&nbsp;in&nbsp;seconds&nbsp;(default:&nbsp;2)</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-stopReading"><strong>stopReading</strong></a>(self, stop: bool) -&gt; None</dt><dd><tt>Stops&nbsp;reading&nbsp;of&nbsp;linereader&nbsp;helperclass</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-writeEEPROMValue"><strong>writeEEPROMValue</strong></a>(self, address: str, value: int, mask: str, pos: str) -&gt; int</dt><dd><tt>Writes&nbsp;a&nbsp;value&nbsp;to&nbsp;the&nbsp;EEPROM&nbsp;of&nbsp;the&nbsp;ACS71020<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:<br>
+&nbsp;<br>
+adress&nbsp;&nbsp;--&nbsp;Address&nbsp;of&nbsp;EEPROM-Register&nbsp;<br>
+&nbsp;<br>
+value&nbsp;&nbsp;&nbsp;--&nbsp;EEPROM&nbsp;Value&nbsp;<br>
+&nbsp;<br>
+mask&nbsp;&nbsp;&nbsp;&nbsp;--&nbsp;Value&nbsp;Mask&nbsp;<br>
+&nbsp;<br>
+pos&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--&nbsp;Position&nbsp;of&nbsp;LSB&nbsp;of&nbsp;value<br>
+&nbsp;<br>
+Returns&nbsp;1&nbsp;if&nbsp;successful,&nbsp;0&nbsp;otherwise</tt></dd></dl>
+
+<dl><dt><a name="SerialBus-writeString"><strong>writeString</strong></a>(self, string: str) -&gt; None</dt><dd><tt>Writes&nbsp;a&nbsp;string&nbsp;to&nbsp;the&nbsp;serial&nbsp;Bus<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:<br>
+&nbsp;<br>
+string&nbsp;--&nbsp;the&nbsp;requested&nbsp;string</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table></td></tr></table>
+</body></html>

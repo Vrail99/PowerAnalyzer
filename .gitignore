@@ -129,4 +129,6 @@ dmypy.json
 .pyre/
 
 # Logfiles etc
-GUI/logfile_*
+/GUI/logfile_*
+
+documentationGenerator.py
