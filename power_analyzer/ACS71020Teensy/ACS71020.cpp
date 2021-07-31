@@ -13,7 +13,7 @@ ACS71020::ACS71020(uint32_t spi_speed, uint8_t CS, uint32_t customer_code)
   _settings = SPISettings(spi_speed, LSBFIRST, SPI_MODE3);
   SPI.begin();
   _CS = CS;
-  _writeReg(0x2F, customer_code);
+  writeReg(0x2F, customer_code);
 }
 
 /*!
@@ -60,7 +60,7 @@ uint32_t ACS71020::readReg(uint16_t address)
 	@param address EEPROM-Address
 	@param value unsigned 32-bit value
 */
-void ACS71020::_writeReg(uint16_t address, uint32_t value)
+void ACS71020::writeReg(uint16_t address, uint32_t value)
 {
   SPI.beginTransaction(_settings);
   uint16_t comm = ((address & _ADDRESS_MASK) | _WRITE);
@@ -95,10 +95,10 @@ void ACS71020::writeEEPROM(uint16_t address, int32_t value, uint32_t valuemask, 
 
   //Write new value to register
   //Serial.printf("Writing %d to %u, with %u shifted by %u\n",value,address,valuemask,pos);
-  _writeReg(address, newValue);
+  writeReg(address, newValue);
 }
 
-uint32_t ACS71020::readEEPROM(uint32_t address, uint32_t valuemask, uint8_t pos)
+uint32_t ACS71020::readEEPROM(uint16_t address, uint32_t valuemask, uint8_t pos)
 {
   //Read the Addresses value and mask out the value
   //Then shift it to the right

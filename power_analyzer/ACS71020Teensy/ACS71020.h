@@ -29,12 +29,12 @@ private:
   SPISettings _settings;
   //Private functions
   int32_t _SignExtendBitfield(uint32_t data, uint16_t width);
-  void _writeReg(uint16_t address, uint32_t value);
 
 public:
   ACS71020(uint32_t spi_speed, uint8_t CS, uint32_t customer_code);
   uint32_t readReg(uint16_t address);
-  uint32_t readEEPROM(uint32_t address, uint32_t valuemask, uint8_t pos);
+  void writeReg(uint16_t address, uint32_t value);
+  uint32_t readEEPROM(uint16_t address, uint32_t valuemask, uint8_t pos);
   void writeEEPROM(uint16_t address, int32_t value, uint32_t valuemask, uint8_t pos);
   float ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width);
   float ConvertSignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width);

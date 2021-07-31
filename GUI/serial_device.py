@@ -111,43 +111,33 @@ class SerialBus:
         Returns the integer value from the teensy or None"""
         value = None
         if (self.deviceOpen() and address != None):
+            req = 'ea<'+str(address)+'>'
+            self.writeString(req)
             try:
-                self.sBus.write(address.encode())
-                time.sleep(0.01)
-            except SerialTimeoutException:
-                print("Error writing a string to the Teensy")
-
-            try:
-                value = int(self.linereader.readline())
-            except SerialTimeoutException:
-                print("Error while reading value")
-                print("{}\t{}".format(address, value))
+                value = int(self.readLine())
             except TypeError as e:
                 print(e)
 
         return value
 
-    def readEEPROMValue(self, address: str, mask: str, pos: str) -> int:
+    def readEEPROMValue(self, address: str, mask: str = 0, pos: str = 0) -> int:
         """Reads a value from the EEPROM of the ACS71020
 
         Keyword Arguments:
 
         address -- the adress to be read from \n
-        mask    -- the mask for the value \n
-        pos     -- the position of the LSB"""
+        mask    -- the mask for the value. 0's for every bit (default: 0x0) \n
+        pos     -- the position of the LSB of the value (default: 0x0)"""
         value = -999
         if (self.deviceOpen()):
             try:
                 stri = "ev<" + str(address) + " " + str(mask) + " " + str(pos) + ">"
-                self.sBus.write(stri.encode())
-            except SerialTimeoutException as e:
-                print("Timeout while writing String to Teensy")
-                return None
+                self.writeString(stri)
             except TypeError as e:
                 print(e)
                 return None
             try:
-                value = int(self.linereader.readline())
+                value = int(self.readLine())
             except SerialTimeoutException as e:
                 print("Timeout while reading EEPROM value")
                 print(stri)
@@ -155,6 +145,19 @@ class SerialBus:
                 print(e)
 
         return value
+
+    def readAddress(self, adr: str = None) -> int:
+        """Reads the value of an address
+
+        Keyword Arguments:
+
+        adr -- The adress in form of an int"""
+        if (adr == None):
+            print("No address")
+            return
+        val = -999
+        val = self.readIntValue(str(adr))
+        return val
 
     def readLine(self, dec: str = 'utf-8') -> str:
         """Reads a line from the serial bus.
@@ -192,20 +195,24 @@ class SerialBus:
         Returns 1 if successful, 0 otherwise
         """
         if (self.deviceOpen()):
-            try:
-                stream = 'ww<' + address + ' ' + str(value) + ' ' + mask + ' ' + str(pos) + '>'
-                print(stream)
-                self.sBus.write(stream.encode())
-            except SerialTimeoutException:
-                print("Timeout while writing")
-                return 0
-            except UnicodeError:
-                print("Encoding not successful")
-                return 0
+            stream = 'ww<' + str(address) + ' ' + str(value) + ' ' + str(mask) + ' ' + str(pos) + '>'
+            self.writeString(stream)
         else:
             print("Cannot write: device not open")
             return 0
+
         return 1
+
+    def writeIntValue(self, adr: str, val: int) -> None:
+        """Writes a value to an address
+
+        Keyword Arguments:
+
+        adr -- address to be written to
+
+        val -- value to write"""
+        req = 'wa<'+str(adr)+' '+str(val)+'>'
+        self.writeString(req)
 
     def writeString(self, string: str) -> None:
         """Writes a string to the serial Bus
@@ -221,6 +228,8 @@ class SerialBus:
                     "Timeout while writing. Not able to reach the teensy or is it busy?")
             except SerialException as e:
                 print("Serial Error", e)
+            except UnicodeError:
+                print("Error in encoding")
 
     # Getter
 

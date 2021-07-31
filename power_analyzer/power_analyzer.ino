@@ -423,16 +423,40 @@ void readSingleEEPROM()
 {
   receiveCommandString();
   char *endPointer;
-  uint16_t adr = strtoul(receivedChars, &endPointer, 16);
+  uint32_t adr = strtoul(receivedChars, &endPointer, 16);
   uint32_t mask = strtoul(endPointer, &endPointer, 16);
   uint8_t pos = strtoul(endPointer, NULL, 10);
 
   uint32_t data = ACSchip.readEEPROM(adr, mask, pos);
 
+  SerialUSB1.printf("Reading Adr %u, Mask %u, on pos %u\n Data: %u\n", adr, mask, pos, data); 
+
   Serial.printf("%u\n", data);
   Serial.send_now(); //Sends instantly to avoid buffering
 }
 
+void readAddress()
+{
+  receiveCommandString();
+  uint32_t adr = strtoul(receivedChars, NULL, 16);
+
+  uint32_t data = ACSchip.readReg(adr);
+  SerialUSB1.printf("Reading Adress: %u, value: %u\n", adr, data);
+  Serial.printf("%u\n", data);
+  Serial.send_now();
+}
+
+void writeAddress()
+{
+  receiveCommandString();
+  char *endPointer;
+  uint32_t adr = strtoul(receivedChars, &endPointer, 16);
+  uint32_t value = strtoul(endPointer, NULL, 10);
+
+  SerialUSB1.printf("Writing %u to address %u\n", value, adr);
+  ACSchip.writeReg(adr, value);
+  
+}
 /*
   Measures the frequency of a waveform, by detecting consecutive rising edges
   Takes the Pulsewidth into account
@@ -521,6 +545,8 @@ void writeEEPROMValue()
   value = strtol(endPointer, &endPointer, 10);
   mask = strtoul(endPointer, &endPointer, 16);
   pos = strtol(endPointer, NULL, 10);
+
+  SerialUSB1.printf("Writing Value %u to adr %u with mask %u on pos %u\n", value, address, mask, pos);
 
   ACSchip.writeEEPROM(address, value, mask, pos);
 }
@@ -790,7 +816,10 @@ void getCommand()
     }
     else if (c1 == 'w') //Write to an EEPROM register
     {
-      writeEEPROMValue();
+      if (c2 == 'w')
+        writeEEPROMValue();
+      else if (c2 == 'a')
+        writeAddress();
     }
     else if (c1 == 'b')
     { //Print Both Code Values
@@ -817,6 +846,8 @@ void getCommand()
       {
         readSingleEEPROM();
       }
+      else if(c2 == 'a') //Reads the content of a memory address
+        readAddress();
     }
     else if (c1 == 'x') //Set to Idle Mode
     {
