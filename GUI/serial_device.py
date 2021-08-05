@@ -102,7 +102,8 @@ class SerialBus:
 
     # Read-Functions
     def readIntValue(self, address: str = None) -> int:
-        """Read a value from an address
+        """Read a certain volatile memory location, determined by address-codes in \n
+        volatile_cfg.txt
 
         Keyword Arguments:
 
@@ -111,8 +112,7 @@ class SerialBus:
         Returns the integer value from the teensy or None"""
         value = None
         if (self.deviceOpen() and address != None):
-            req = 'ea<'+str(address)+'>'
-            self.writeString(req)
+            self.writeString(str(address))
             try:
                 value = int(self.readLine())
             except TypeError as e:
@@ -132,15 +132,12 @@ class SerialBus:
         if (self.deviceOpen()):
             try:
                 stri = "ev<" + str(address) + " " + str(mask) + " " + str(pos) + ">"
-                self.writeString(stri)
             except TypeError as e:
                 print(e)
                 return None
+            self.writeString(stri)
             try:
                 value = int(self.readLine())
-            except SerialTimeoutException as e:
-                print("Timeout while reading EEPROM value")
-                print(stri)
             except TypeError as e:
                 print(e)
 
@@ -156,7 +153,9 @@ class SerialBus:
             print("No address")
             return
         val = -999
-        val = self.readIntValue(str(adr))
+        req = 'ea<' + str(adr) + '>'
+        self.writeString(req)
+        val = self.readLine()
         return val
 
     def readLine(self, dec: str = 'utf-8') -> str:
@@ -167,7 +166,7 @@ class SerialBus:
         dec -- the encoding as a string(default: utf-8)
 
         Returns the string or None, if reading failed"""
-        k = None
+        k = 0
         if (self.deviceOpen()):
             try:
                 k = str(self.linereader.readline().decode(dec))
