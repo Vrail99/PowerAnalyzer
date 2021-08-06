@@ -33,6 +33,7 @@ from settingsPage import SettingsPage
 from livePage import LivePage
 from mainPage import MainPage
 from scopePage import ScopeWindow
+from calibrationWizard import CalibrationWizard
 import styles
 
 # Matplot Imports
@@ -64,9 +65,11 @@ class mainWindow(tk.Tk):
         self.version = "1.1"
 
         # Height and width for Windows
-        self.minsize(700, 450)
+        self.wm_minsize(700, 450)
+        self.wm_maxsize(700, 450)
         self.width = 700
         self.height = 450
+        self.title("Power Analyzer v." + self.version)
 
         # Serial Device, serial devices combobox
         self.sBus = serial_device.SerialBus()  # Serial bus instance
@@ -94,8 +97,6 @@ class mainWindow(tk.Tk):
             pages -- list of pages to be added. This list should contain the classes of names
         """
 
-        self.title("Power Analyzer v." + self.version)
-
         # Controller for Page Buttons
         page_contr = ttk.Frame(self, style="TFrame")
         page_contr.pack(fill="x", expand=True)
@@ -119,10 +120,13 @@ class mainWindow(tk.Tk):
         b3 = ttk.Button(page_contr, style="TButton", text="Settings",
                         command=lambda: self._show_frame(SettingsPage))
         b3.pack(side=tk.LEFT)
-        self.scopeButton = ttk.Button(
-            page_contr, style="TButton", text="Scope", state='disabled',
-            command=lambda: self._openScope())
+        self.scopeButton = ttk.Button(page_contr, style="TButton", text="Scope", state='disabled',
+                                      command=lambda: self._openScope())
         self.scopeButton.pack(side=tk.LEFT)
+
+        self.calButton = ttk.Button(page_contr, style="TButton", text="Calibration", state='disabled',
+                                    command=lambda: self._openCalibration())
+        self.calButton.pack(side=tk.LEFT)
 
         # BottomBar with Statuslabel
         self.l_status = ttk.Label(
@@ -259,6 +263,7 @@ class mainWindow(tk.Tk):
                 self.sBus.getCurrentPort()
             self.disconnbtn["state"] = tk.NORMAL
             self.scopeButton["state"] = tk.NORMAL
+            self.calButton["state"] = tk.NORMAL
             self.pages[LivePage].get_btn["state"] = tk.NORMAL
             self.pages[LivePage].get_single_btn["state"] = tk.NORMAL
             self.pages[LivePage].readCont_btn["state"] = tk.NORMAL
@@ -273,6 +278,14 @@ class mainWindow(tk.Tk):
         self.scopeWindow.protocol("WM_DELETE_WINDOW", self._endScopeProgram)
         self.scopeWindow.attributes("-topmost", 'true')
 
+    def _openCalibration(self) -> None:
+        """Opens the Calibration Wizard"""
+        self.calWindow = CalibrationWizard(self, self.sBus)
+        self.calWindow.focus_set()
+        self.calWindow.grab_set()
+        self.calWindow.protocol("WM_DELETE_WINDOW", lambda: self.calWindow.destroy())
+        self.calWindow.attributes("-topmost", 'true')
+
     def _endScopeProgram(self) -> None:
         """Destroys the scope window"""
         self.scopeWindow._stopCodes()
@@ -286,6 +299,7 @@ class mainWindow(tk.Tk):
         self.l_status["text"] = "Not connected"
         self.disconnbtn["state"] = tk.DISABLED
         self.scopeButton["state"] = tk.DISABLED
+        self.calButton["state"] = tk.DISABLED
         self.pages[LivePage].get_btn["state"] = tk.DISABLED
         self.pages[LivePage].get_single_btn["state"] = tk.DISABLED
         self.pages[LivePage].readCont_btn["state"] = tk.DISABLED
@@ -356,9 +370,10 @@ class mainWindow(tk.Tk):
             self.pages[LivePage]._endScopeProgram()
         except:
             pass
-        if (self.getSerialBus().deviceOpen()):
+        if (self.sBus.deviceOpen()):
+            print("Closing program")
             self.sBus.writeString('x')
-            time.sleep(0.25)
+            time.sleep(1)
             self.sBus.writeString('bf')
             self.sBus.closePort()
 

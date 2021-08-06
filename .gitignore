@@ -129,6 +129,13 @@ dmypy.json
 .pyre/
 
 # Logfiles etc
-/GUI/logfile_*
+GUI/logfile_*
+GUI/.vscode
+
+.vscode
+
+.DS_Store
+
+logfile_*
 
 documentationGenerator.py
