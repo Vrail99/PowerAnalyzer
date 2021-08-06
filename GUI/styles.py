@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from tkinter import ttk
+from tkinter import ttk, PhotoImage
 
 
 def initStyles():
@@ -29,27 +29,20 @@ def initStyles():
     bgColor = "#ECECEC"
     baseFont = 'Arial'
 
-    labelstyle = ttk.Style()
-    labelstyle.configure("TLabel", font=(
+    rbo = PhotoImage(file="rbo.png")
+    rbp = PhotoImage(file="rbp.png")
+
+    style = ttk.Style()
+    style.configure("TLabel", font=(
         baseFont, 12), background=bgColor)
 
-    titlelabelstyle = ttk.Style()
-    titlelabelstyle.configure("Titletext.TLabel", font=(baseFont, 16))
-
-    buttonstyle = ttk.Style()
-    buttonstyle.configure("TButton", font=(baseFont, 12))
-
-    comboboxstyle = ttk.Style()
-    comboboxstyle.configure("TCombobox", font=(baseFont, 12))
-
-    framestyle = ttk.Style()
-    framestyle.configure("TFrame", borderwidth=0, background=bgColor)
-
-    entrystyle = ttk.Style()
-    entrystyle.configure("TEntry", font=(baseFont, 12))
-
-    treestyle = ttk.Style()
-    treestyle.configure("Treeview", font=(baseFont, 12))
-
-    radiostyle = ttk.Style()
-    radiostyle.configure("TRadiobutton", font=(baseFont, 12))
+    style.configure("Titletext.TLabel", font=(baseFont, 16))
+    style.configure("Calibtext.TLabel", font=(baseFont, 14), height=10)
+    style.configure("TButton", font=(baseFont, 12))
+    #style.configure("Calibbtn.TButton", font=(baseFont, 12))
+    style.configure("Calibbtn.TButton", borderwidth=0, highlightthickness=0)
+    style.configure("TCombobox", font=(baseFont, 12))
+    style.configure("TFrame", borderwidth=0, background=bgColor)
+    style.configure("TEntry", font=(baseFont, 12))
+    style.configure("Treeview", font=(baseFont, 12))
+    style.configure("TRadiobutton", font=(baseFont, 12))

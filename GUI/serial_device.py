@@ -33,8 +33,8 @@ class SerialBus:
         self.sBus = serial.Serial()
         self.name = "None"
         self.linereader = None
-        self.writeTimeout = 2  # Seconds
-        self.readTimeout = 2  # Seconds
+        self.writeTimeout = 1  # Seconds
+        self.readTimeout = 1  # Seconds
         self.currPort = None  # Current Port
         self.port_list = []  # Empty Port List
 
