@@ -96,6 +96,8 @@ class CalibrationWizard(tk.Toplevel):
                           " enter the value up to the 3rd decimal point(e.g. 3.124).\n"
                           "Then press the button.")
         label.pack(pady=5)
+        self.entry = ttk.Entry(ref, style="TEntry")
+        self.entry.pack()
         button = tk.Button(ref, image=self.rbo, borderwidth=0, highlightthickness=0,
                            bd=0,  text="Calculate", command=self._calcFineTrim)
         button.pack()
@@ -140,6 +142,12 @@ class CalibrationWizard(tk.Toplevel):
 
     def _calcFineTrim(self) -> None:
         print("Calculating Fine Trim")
+        try:
+            expected = float(self.entry.get())
+        except TypeError:
+            print(e)
+
+        print("Value in Entry:", expected)
 
     def _addToCoarseGain(self, off: int) -> None:
         print("Added", off, "to crs_sns")
