@@ -32,6 +32,10 @@ class CalibrationWizard(tk.Toplevel):
     def __init__(self, controller: ttk.Frame, bus: serial_device.SerialBus) -> None:
         super().__init__(controller, background='#d9d9d9', takefocus=True)
         self.geometry("480x240")
+        self.wm_aspect(2, 1, 2, 1)
+        self.wm_minsize(480, 240)
+        self.wm_maxsize(480, 240)
+        self.wm_title("Calibration Wizard")
         self.fn = 0
         self.calibrationSteps = []
 

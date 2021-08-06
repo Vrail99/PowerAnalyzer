@@ -29,18 +29,13 @@ def initStyles():
     bgColor = "#ECECEC"
     baseFont = 'Arial'
 
-    rbo = PhotoImage(file="rbo.png")
-    rbp = PhotoImage(file="rbp.png")
-
     style = ttk.Style()
     style.configure("TLabel", font=(
         baseFont, 12), background=bgColor)
 
     style.configure("Titletext.TLabel", font=(baseFont, 16))
-    style.configure("Calibtext.TLabel", font=(baseFont, 14), height=10)
+    style.configure("Calibtext.TLabel", font=(baseFont, 14))
     style.configure("TButton", font=(baseFont, 12))
-    #style.configure("Calibbtn.TButton", font=(baseFont, 12))
-    style.configure("Calibbtn.TButton", borderwidth=0, highlightthickness=0)
     style.configure("TCombobox", font=(baseFont, 12))
     style.configure("TFrame", borderwidth=0, background=bgColor)
     style.configure("TEntry", font=(baseFont, 12))

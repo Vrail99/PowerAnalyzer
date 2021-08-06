@@ -65,9 +65,11 @@ class mainWindow(tk.Tk):
         self.version = "1.1"
 
         # Height and width for Windows
-        self.minsize(700, 450)
+        self.wm_minsize(700, 450)
+        self.wm_maxsize(700, 450)
         self.width = 700
         self.height = 450
+        self.title("Power Analyzer v." + self.version)
 
         # Serial Device, serial devices combobox
         self.sBus = serial_device.SerialBus()  # Serial bus instance
@@ -94,8 +96,6 @@ class mainWindow(tk.Tk):
             Keyword Arguments:
             pages -- list of pages to be added. This list should contain the classes of names
         """
-
-        self.title("Power Analyzer v." + self.version)
 
         # Controller for Page Buttons
         page_contr = ttk.Frame(self, style="TFrame")
