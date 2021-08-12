@@ -212,7 +212,6 @@ class SettingsPage(ttk.Frame):
             self.init = True
             self.writeBtn["state"] = tk.NORMAL
 
-        self.sBus.writeString("x")
         time.sleep(0.25)
         for key in self.EEPROMDict.keys():
             self._readValue(key)

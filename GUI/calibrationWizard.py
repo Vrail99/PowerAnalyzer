@@ -22,22 +22,26 @@ SOFTWARE.
 """
 
 import tkinter as tk
+from tkinter import simpledialog
 from tkinter import PhotoImage, ttk
 
 from matplotlib import style
 import serial_device
+import utils
+import time
 
 
 class CalibrationWizard(tk.Toplevel):
     def __init__(self, controller: ttk.Frame, bus: serial_device.SerialBus) -> None:
         super().__init__(controller, background='#d9d9d9', takefocus=True)
-        self.geometry("480x240")
-        self.wm_aspect(2, 1, 2, 1)
-        self.wm_minsize(480, 240)
-        self.wm_maxsize(480, 240)
+        self.geometry("480x360")
+        self.wm_minsize(480, 360)
+        self.wm_maxsize(480, 360)
         self.wm_title("Calibration Wizard")
         self.fn = 0
         self.calibrationSteps = []
+        self.sBus = bus
+        self.contr = controller
 
         self._guiSetup()
 
@@ -82,43 +86,65 @@ class CalibrationWizard(tk.Toplevel):
         self.calibrationSteps = [zeroFrame, gainFrame, ac_V_Frame, ac_I_Frame]
 
     def _zeroFrame_setup(self, ref: ttk.Frame) -> None:
-        label = ttk.Label(ref, style="Calibtext.TLabel", justify='center', wraplength=int(480*0.6),
+        label = ttk.Label(ref, style="Calibtext.TLabel", justify='center', wraplength=int(480*0.7),
                           text="Zero-Offset-Calibration. \nPlease disconnect every voltage source"
                           " and press the button")
         label.pack(pady=5)
         button = tk.Button(ref, image=self.rbo, borderwidth=0, highlightthickness=0,
                            bd=0, text="Zero", command=self._calcOffset)
         button.pack()
+        self.zeroStatusLabel = ttk.Label(ref, justify='center')
+        self.zeroStatusLabel.pack()
 
     def _gainFrame_setup(self, ref: ttk.Frame) -> None:
-        label = ttk.Label(ref, style="Calibtext.TLabel", justify='center', wraplength=int(480*0.6),
-                          text="Fine Trim-Calibration. \nPlease connect a known voltage and"
-                          " enter the value up to the 3rd decimal point(e.g. 3.124).\n"
+        label = ttk.Label(ref, style="Calibtext.TLabel", justify='center', wraplength=int(480*0.7),
+                          text="Fine Trim-Calibration. \nPlease connect a known DC Current and"
+                          " enter the value in Ampere.\n"
                           "Then press the button.")
         label.pack(pady=5)
-        self.entry = ttk.Entry(ref, style="TEntry")
-        self.entry.pack()
+        f = ttk.Frame(ref, style="TFrame")
+        f.pack()
+        self.gainEntry = ttk.Entry(f, style="TEntry")
+        self.gainEntry.pack(side=tk.LEFT)
+        ttk.Label(f, text="V").pack(side=tk.RIGHT)
         button = tk.Button(ref, image=self.rbo, borderwidth=0, highlightthickness=0,
                            bd=0,  text="Calculate", command=self._calcFineTrim)
         button.pack()
+        self.gainStatusLabel = ttk.Label(ref, justify='center')
+        self.gainStatusLabel.pack()
 
     def _ac_V_Frame_setup(self, ref: ttk.Frame) -> None:
-        label = ttk.Label(ref, style="Calibtext.TLabel", justify='center', wraplength=int(480*0.6),
-                          text="AC Voltage RMS Calibration. \nPlease connect 230 Vrms"
-                          " and press the button")
+        label = ttk.Label(
+            ref, style="Calibtext.TLabel", justify='center', wraplength=int(480 * 0.7),
+            text="AC Voltage RMS Calibration. \nPlease connect a known AC voltage.\n"
+            "Enter the value (in Volt) and press the button.")
         label.pack(pady=5)
+        f = ttk.Frame(ref, style="TFrame")
+        f.pack()
+        self.VRMSEntry = ttk.Entry(f, style="TEntry")
+        self.VRMSEntry.pack(side=tk.LEFT)
+        ttk.Label(f, text="V").pack(side=tk.RIGHT)
         button = tk.Button(ref, image=self.rbo, borderwidth=0, highlightthickness=0,
                            bd=0, text="Calculate", command=self._calcVRMS_calFactor)
         button.pack()
+        self.VstatusLabel = ttk.Label(ref, justify='center')
+        self.VstatusLabel.pack()
 
     def _ac_I_Frame_setup(self, ref: ttk.Frame) -> None:
-        label = ttk.Label(ref, style="Calibtext.TLabel", justify='center', wraplength=int(480*0.6),
-                          text="AC Current RMS Calibration. \nPlease a load with a known RMS current"
-                          " and press the button")
+        label = ttk.Label(ref, style="Calibtext.TLabel", justify='center', wraplength=int(480*0.7),
+                          text="AC Current RMS Calibration. \nPlease connect a load with known RMS current."
+                          "Enter the expected value (in Ampere) and press the button")
         label.pack(pady=5)
+        f = ttk.Frame(ref, style="TFrame")
+        f.pack()
+        self.IRMSEntry = ttk.Entry(f, style="TEntry")
+        self.IRMSEntry.pack(side=tk.LEFT)
+        ttk.Label(f, text="A").pack(side=tk.RIGHT)
         button = tk.Button(ref, image=self.rbo, borderwidth=0, highlightthickness=0,
                            bd=0, text="Calculate", command=self._calcIRMS_calFactor)
         button.pack()
+        self.IstatusLabel = ttk.Label(ref, justify='center')
+        self.IstatusLabel.pack()
 
     def _callFrame(self, offset: int) -> None:
         self.fn += offset
@@ -143,8 +169,8 @@ class CalibrationWizard(tk.Toplevel):
     def _calcFineTrim(self) -> None:
         print("Calculating Fine Trim")
         try:
-            expected = float(self.entry.get())
-        except TypeError:
+            expected = float(self.gainEntry.get())
+        except TypeError as e:
             print(e)
 
         print("Value in Entry:", expected)
@@ -153,7 +179,60 @@ class CalibrationWizard(tk.Toplevel):
         print("Added", off, "to crs_sns")
 
     def _calcVRMS_calFactor(self) -> None:
-        print("Calculating VRMS Calibration factor")
+        self.VstatusLabel["text"] = "Calculating VRMS conversion factor"
+        # Read current RMS value measured by the chip 9 times and calculate the mean
+        calibFactor = 0
+        for i in range(0, 9):
+            calibFactor += self.sBus.readIntValue('vr')
+            time.sleep(0.1)
+        calibFactor = round(calibFactor/9)
+
+        # Read the entered Value
+        try:
+            exp = float(self.VRMSEntry.get())
+        except TypeError as e:
+            print(e)
+
+        # Calculate the Value at RSense
+        exp = exp * 3000/4003000
+
+        # Calculate the conversion factor
+        conv = exp/calibFactor
+        conversionFactor = utils.ConvertFloatToUnsignedFP(conv)
+
+        # Write the request-string to the bus
+        mode = 0
+        req = 'wc<'+str(conversionFactor) + ' ' + str(mode) + '>'
+        self.sBus.writeString(req)
+        err = str(self.sBus.readLine())
+        if (err == "SUCCESS"):
+            self.VstatusLabel["text"] = "Calibration Successful.\nConversion-factor:" + str(conv)
 
     def _calcIRMS_calFactor(self) -> None:
-        print("Calculating IRMS Calibration factor")
+        self.IstatusLabel["text"] = "Calculating IRMS conversion factor"
+        # Read current RMS value measured by the chip 9 times and calculate the mean
+        calibFactor = 0
+        for i in range(0, 9):
+            calibFactor += self.sBus.readIntValue('ir')
+            time.sleep(0.1)
+        calibFactor = round(calibFactor/9)
+
+        # Read the entered Value
+        try:
+            exp = float(self.IRMSEntry.get())
+        except TypeError as e:
+            print(e)
+
+        # Calculate the conversion factor
+        conv = exp/calibFactor
+        self.contr
+        conversionFactor = utils.ConvertFloatToUnsignedFP(conv)
+
+        # Write the request-string to the bus
+        mode = 1
+        req = 'wc<'+str(conversionFactor) + ' ' + str(mode) + '>'
+        self.sBus.writeString(req)
+
+        err = str(self.sBus.readLine())
+        if (err == "SUCCESS"):
+            self.IstatusLabel["text"] = "Calibration Successful.\nConversion-factor:" + str(conv)
