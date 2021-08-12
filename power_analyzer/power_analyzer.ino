@@ -35,7 +35,7 @@ SOFTWARE.
 #include <EEPROM.h>
 
 //Uncomment for Debug messages on Serial Port 3
-#define DEBUG
+//#define DEBUG
 
 //Defines for GPIO
 #define ACS_CS 10              //Chip Select for the ACS Chip
@@ -49,8 +49,13 @@ SOFTWARE.
 
 #define VRMS_cal_address 0
 #define IRMS_cal_address VRMS_cal_address + 4
-uint32_t calFactor_VRMS = 21280;
-uint32_t calFactor_IRMS = 257;
+//float exp_VRMS = 0.1784;
+//float exp_IRMS = 0.26086;
+//Values predefined if EEPROM-read error
+float conv_factor_VRMS = 8.384 * pow(10, -6);
+float conv_factor_IRMS = 1.015 * pow(10, -3);
+//uint32_t calFactor_VRMS = 21280;
+//uint32_t calFactor_IRMS = 257;
 
 //Creation of a Chip instance
 ACS71020 ACSchip(ACS_SPI_SPEED, ACS_CS, ACS_CUSTOMER_CODE);
@@ -182,15 +187,17 @@ void setup()
   }
   display.clearDisplay();
   display.display();
-  //Uncomment the next two rows, if accidentally written values too large
+  //Uncomment the next two rows, if accidentally written values too large or made a factory reset
   //MCU_write(VRMS_cal_address, 21280, false);
   //MCU_write(IRMS_cal_address, 257, false);
 
   //Read current calibration factors from the chip
-  calFactor_VRMS = MCU_read(VRMS_cal_address, false);
-  calFactor_IRMS = MCU_read(IRMS_cal_address, false);
+  uint32_t tmpInt = MCU_read(VRMS_cal_address, false); //Read VRMS conversionFactor
+  conv_factor_VRMS = ConvertUnsignedFixedPoint(tmpInt, 23, 24);
+  tmpInt = MCU_read(IRMS_cal_address, false);
+  conv_factor_IRMS = ConvertUnsignedFixedPoint(tmpInt, 23, 24);
 
-  SerialUSB1.printf("Init of calibration Factors:\n VRMS-cal:%u\n IRMS-cal:%u\n", calFactor_VRMS, calFactor_IRMS);
+  SerialUSB1.printf("Init of Conversion Factors:\n VRMS-conv-factor:%e\n IRMS-conv-factor:%e\n", conv_factor_VRMS, conv_factor_IRMS);
 
   //Init of FFT Instance
   arm_status fft_err = arm_cfft_radix4_init_f32(&fftInstance, FFTLEN, 0, 1);
@@ -261,10 +268,10 @@ void loop()
       phaseangle = (angle_v - angle_i) * (180 / PI);
 
       arm_cmplx_mag_f32(iSamps, Mags, FFTLEN);
-      float base_mag_i = Mags[binSize*2]/(2*FFTLEN);
+      float base_mag_i = Mags[binSize * 2] / (2 * FFTLEN);
       float tmp = ACS_IRMS; // base in a
       tmp = ConvertUnsignedFixedPoint(tmp, 15, 17);
-      distortion_factor = (tmp/base_mag_i);
+      distortion_factor = (tmp / base_mag_i);
       //SerialUSB1.printf("Dist.-fact:\n Base:%f\n irms:%f\n dist_fact:%f\n", base_mag_i, tmp, distortion_factor);
       thd_i = calcTHD(17);
       if (grouping_en) //If grouping enabled, calculate Harmonic Groups
@@ -407,7 +414,7 @@ void updateDisplay()
     display.printf("Power %.2f W\n", ConvertSignedFixedPoint(pact_sec, 15, 17) * MAXPOWER);
     pfact = ACS_PF;
     temp = ConvertSignedFixedPoint(pfact, 9, 11);
-    temp = temp*distortion_factor;
+    temp = temp * distortion_factor;
     display.printf("P-Factor: %.2f\n", temp);
     //float ang = acos(temp) * (180 / PI);
     display.printf("Winkel: %.2fdeg\n", phaseangle);
@@ -436,9 +443,9 @@ void readSingleEEPROM()
   uint8_t pos = strtoul(endPointer, NULL, 10);
 
   uint32_t data = ACSchip.readEEPROM(adr, mask, pos);
-  #ifdef DEBUG
-    SerialUSB1.printf("Reading Adr %u, Mask %u, on pos %u\n Data: %u\n", adr, mask, pos, data);
-  #endif
+#ifdef DEBUG
+  SerialUSB1.printf("Reading Adr %u, Mask %u, on pos %u\n Data: %u\n", adr, mask, pos, data);
+#endif
   Serial.printf("%u\n", data);
   Serial.send_now(); //Sends instantly to avoid buffering
 }
@@ -467,9 +474,9 @@ void MCU_write(uint32_t adr, uint32_t val, bool read)
   }
   if (adr <= 1079 && adr >= 0)
   {
-    #ifdef DEBUG
-      SerialUSB1.printf("Writing MCU\n adr: %u\n val:%u\n", adr, val);
-    #endif
+#ifdef DEBUG
+    SerialUSB1.printf("Writing MCU\n adr: %u\n val:%u\n", adr, val);
+#endif
     //Write MSB first
     EEPROM.write(adr, (uint8_t)(val >> 24));
     EEPROM.write(adr + 1, (uint8_t)(val >> 16));
@@ -509,9 +516,9 @@ uint32_t MCU_read(uint32_t adr, bool read)
   data |= (uint32_t)EEPROM.read(adr + 1) << 16;
   data |= (uint32_t)EEPROM.read(adr + 2) << 8;
   data |= (uint32_t)EEPROM.read(adr + 3);
-  #ifdef DEBUG
-    SerialUSB1.printf("Reading MCU\n adr: %u\n data:%u\n", adr, data);
-  #endif
+#ifdef DEBUG
+  SerialUSB1.printf("Reading MCU\n adr: %u\n data:%u\n", adr, data);
+#endif
 
   return data;
 }
@@ -522,9 +529,9 @@ void readAddress()
   uint32_t adr = strtoul(receivedChars, NULL, 16);
 
   uint32_t data = ACSchip.readReg(adr);
-  #ifdef DEBUG
-    SerialUSB1.printf("Reading Adress: %u, value: %u\n", adr, data);
-  #endif
+#ifdef DEBUG
+  SerialUSB1.printf("Reading Adress: %u, value: %u\n", adr, data);
+#endif
   Serial.printf("%u\n", data);
   Serial.send_now();
 }
@@ -535,11 +542,12 @@ void writeAddress()
   char *endPointer;
   uint32_t adr = strtoul(receivedChars, &endPointer, 16);
   uint32_t value = strtoul(endPointer, NULL, 10);
-  #ifdef DEBUG
-    SerialUSB1.printf("Writing %u to address %u\n", value, adr);
-  #endif
+#ifdef DEBUG
+  SerialUSB1.printf("Writing %u to address %u\n", value, adr);
+#endif
   ACSchip.writeReg(adr, value);
 }
+
 /*
   Measures the frequency of a waveform, by detecting consecutive rising edges
   Takes the Pulsewidth into account
@@ -567,6 +575,39 @@ void measureFrequency()
   secTime = micros(); //Save the time of the second rising edge
   float ti = secTime - firstTime;
   pwr_f = 1 / (ti / 1000000); //Convert time to seconds and calculate Frequency
+}
+
+/*
+  Sets the calibration values. Send
+  wc<calibration_factor exp_rms voltage(0)/current_mode(1)>
+*/
+void calibrateRMS()
+{
+  receiveCommandString();
+  char *endPointer;
+  //Conversion Factor
+  uint32_t conv = strtoul(receivedChars, &endPointer, 10);
+  //Mode either 0 or 1
+  uint8_t mode = (uint8_t)strtoul(endPointer, NULL, 10);
+
+  float converted = ConvertUnsignedFixedPoint(conv, 23, 24);
+#ifdef DEBUG
+  SerialUSB1.printf("Calibration: \n Conversion-f (int): %u,\n mode: %u,\n Converted: %e\n", conv, mode, converted);
+#endif
+
+  if (mode == 0)
+  {
+    conv_factor_VRMS = converted;
+    MCU_write(VRMS_cal_address, conv, false);
+  }
+  else
+  {
+    conv_factor_IRMS = converted;
+    MCU_write(IRMS_cal_address, conv, false);
+  }
+
+  Serial.printf("SUCCESS\n");
+  Serial.send_now();
 }
 
 /*
@@ -628,9 +669,9 @@ void writeEEPROMValue()
   value = strtol(endPointer, &endPointer, 10);
   mask = strtoul(endPointer, &endPointer, 16);
   pos = strtol(endPointer, NULL, 10);
-
+#ifdef DEBUG
   SerialUSB1.printf("Writing Value %u to adr %u with mask %u on pos %u\n", value, address, mask, pos);
-
+#endif
   ACSchip.writeEEPROM(address, value, mask, pos);
 }
 
@@ -901,6 +942,8 @@ void getCommand()
         writeAddress();
       else if (c2 == 'e') //Writes a value to the MCU-EEPROM
         MCU_write(0, 0, true);
+      else if (c2 == 'c') //Write calibration
+        calibrateRMS();
     }
     else if (c1 == 'b')
     { //Print Both Code Values
@@ -929,10 +972,13 @@ void getCommand()
       }
       else if (c2 == 'a') //Reads the content of a memory address
         readAddress();
-      else if (c2 == 'e'){ //Reads the MCU-EEPROM and sends the return
+      else if (c2 == 'e')
+      { //Reads the MCU-EEPROM and sends the return
         uint32_t data = MCU_read(0, true);
         Serial.printf("%u\n", data);
       }
+      else if (c2 == 's') // EEPROM "status"
+        sendCalibration();
     }
     else if (c1 == 'x') //Set to Idle Mode
     {
@@ -1083,6 +1129,14 @@ void timeSync()
   }
 }
 
+void sendCalibration()
+{
+  uint32_t tmp = MCU_read(VRMS_cal_address, false);
+  Serial.printf("VRMS,%u\n", tmp);
+  tmp = MCU_read(IRMS_cal_address, false);
+  Serial.printf("IRMS,%u\n", tmp);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Calculation Functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -1091,10 +1145,9 @@ float calcVRMS()
 {
   v_rms = ACS_VRMS;
   //uint32_t calib_Code = 21280;              //Calibration Factor
-  float exp_RMS = 0.1784;                       //Expected Input VRMS from Calibration
-  float conv_factor = exp_RMS / calFactor_VRMS; //Actual Sensitivity
+  //conv_factor_VRMS = exp_VRMS / calFactor_VRMS; //Actual Sensitivity
 
-  float vrms_rsense = v_rms * conv_factor;           //Voltage over RS1
+  float vrms_rsense = v_rms * conv_factor_VRMS;      //Voltage over RS1
   float vrms_input = vrms_rsense * (4003000 / 3000); //Voltage at output
   return vrms_input;
 }
@@ -1102,8 +1155,8 @@ float calcIRMS()
 {
   i_rms = ACS_IRMS;
   //uint32_t i_calib_Code = 257;
-  float conv_factor = 0.26086 / calFactor_IRMS; //Calibration from Lightbulb
-  float irms = i_rms * conv_factor;
+  //float conv_factor = exp_IRMS / calFactor_IRMS; //Calibration from Lightbulb
+  float irms = i_rms * conv_factor_IRMS; //conv_factor;
   return irms;
 }
 

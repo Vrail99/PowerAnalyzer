@@ -31,51 +31,46 @@ SOFTWARE.
 
 import numpy as np
 
-"""
-   Convert an unsigned bitfield which is right justified, into a floating point number
+
+def ConvertUnsignedFixedPoint(inputValue, binaryPoint, width):
+    """
+    Convert an unsigned bitfield which is right justified, into a floating point number
 
       data        - the bitfield to be converted
       binaryPoint - the binary point (the bit to the left of the binary point)
       width       - the width of the bitfield
       returns     - the floating point number
-"""
-
-
-def ConvertUnsignedFixedPoint(inputValue, binaryPoint, width):
+    """
     mask = 0
     if (width == 32):
         mask = 0xFFFFFFFF
     else:
         mask = pow(2, width) - 1
 
-    return (float(inputValue & mask, ) / float(pow(2, binaryPoint)))
+    return (float(inputValue & mask) / float(pow(2, binaryPoint)))
 
 
-"""
-   Convert a signed bitfield which is right justified, into a floating point number
+def ConvertSignedFixedPoint(inputValue, binaryPoint, width):
+    """
+    Convert a signed bitfield which is right justified, into a floating point number
 
       data        - the bitfield to be sign extended then converted
       binaryPoint - the binary point (the bit to the left of the binary point)
       width       - the width of the bitfield
       returns     - the floating point number
-"""
-
-
-def ConvertSignedFixedPoint(inputValue, binaryPoint, width):
+    """
     signedValue = SignExtendBitfield(inputValue, width)
     return (float(signedValue) / pow(2, binaryPoint))
 
 
-"""
-   Sign extend a bitfield which if right justified
+def SignExtendBitfield(data, width):
+    """
+    Sign extend a bitfield which if right justified
 
       data        - the bitfield to be sign extended
       width       - the width of the bitfield
       returns     - the sign extended bitfield
-"""
-
-
-def SignExtendBitfield(data, width):
+    """
     # If the bitfield is the width of the variable, don't bother trying to sign extend (it already is)
     if (width == 32):
         return int(data)
@@ -87,11 +82,34 @@ def SignExtendBitfield(data, width):
     return int((x ^ mask) - mask)
 
 
+def ConvertFloatToUnsignedFP(f: float, bitwidth: int = 24, fraction: int = 23) -> int:
+    """
+    Converts a floating point number to a fixed point format of a bitwidth.
+
+        f           -- the floating point number
+        bitwidth    -- the required bitwidth
+        fraction    -- the length of the fractional part
+
+    Returns the fixed point representation of the number with the given parameters
+    """
+    scaling_factor = (1 << fraction)
+    largest = (1 << bitwidth-fraction)-(pow(2, -(bitwidth-fraction)))
+    if f > largest:
+        print("{} doesn't fit into a {}-bit FP with {}-bit fractional part".format(f, bitwidth, fraction))
+        return 0
+
+    return round(f * scaling_factor)
+
+
 #
 # Converts a 2s complement number
 #
 
 def ConvertTwosComplement(data, bitwidth):
+    """
+    Converts a two's complement fixed point number
+    """
+    # Is the sign bit 0 ?
     if (data & (1 << (bitwidth - 1))) != 0:
         data = data - (1 << bitwidth)
 

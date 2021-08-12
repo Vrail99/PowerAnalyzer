@@ -35,6 +35,7 @@ from mainPage import MainPage
 from scopePage import ScopeWindow
 from calibrationWizard import CalibrationWizard
 import styles
+import utils
 
 # Matplot Imports
 from matplotlib import style
@@ -270,6 +271,18 @@ class mainWindow(tk.Tk):
             self.pages[LivePage].stopRead_btn["state"] = tk.NORMAL
             self.pages[LivePage].timeSync_btn["state"] = tk.NORMAL
             self.pages[SettingsPage].readBtn["state"] = tk.NORMAL
+            # Get conversion factors
+            try:
+                self.sBus.writeString('es')
+                tmp = str(self.sBus.readLine()).split(',')
+                if (tmp[0] == "VRMS"):
+                    v_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[1]), 23, 24)
+                tmp = str(self.sBus.readLine()).split(',')
+                if (tmp[0] == "IRMS"):
+                    i_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[1]), 23, 24)
+                self.pages[LivePage].setConversionFactors(v_conv_factor, i_conv_factor)
+            except TypeError as e:
+                print(e)
 
     def _openScope(self) -> None:
         """Opens the Oscilloscope-Window"""

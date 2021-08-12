@@ -59,6 +59,9 @@ class LivePage(ttk.Frame):
 
         self.VolatileDict = {}
 
+        self.v_conv_factor = 0
+        self.i_conv_factor = 0
+
         self._guiSetup()
 
     def _guiSetup(self) -> None:
@@ -124,6 +127,7 @@ class LivePage(ttk.Frame):
             self.tree.insert("", 'end', iid=tmp[0], text=tmp[0])
 
         self._fillTreeView()
+
         self.init = True
 
     def _fillTreeView(self) -> None:
@@ -215,6 +219,10 @@ class LivePage(ttk.Frame):
         final = t + 3600 - time.timezone  # Calculate integer for time
         self.sBus.writeString("tt<" + str(final) + ">")  # Write the time-value
 
+    def setConversionFactors(self, VRMS: float, IRMS: float) -> None:
+        self.v_conv_factor = VRMS
+        self.i_conv_factor = IRMS
+
     def _calcVRMS(self, vrmscode: int) -> float:
         """Calculates the VRMS voltage.
 
@@ -223,13 +231,8 @@ class LivePage(ttk.Frame):
         vrmscode -- integer code to be converted
 
         Returns a float value of the input rms voltage"""
-        # 172.37mV expected RMS Voltage
-        calib_Code = 20454
-        exp_RMS = 230.23 * 3000 / 4003000  # voltage Divider
-        # Actual Sensitivity/Measured   Calculated: 8.49*10**-6
-        conv_factor = (exp_RMS) / calib_Code
-        vrms_rsense = vrmscode * conv_factor  # Volt
-        # vrms_input = max_volt * vrmscode / pow(2, 15)
+        vrms_rsense = vrmscode * self.v_conv_factor  # Volt
+
         vrms_input = float(vrms_rsense * (4003000 / 3000))
         return vrms_input
 
@@ -241,7 +244,5 @@ class LivePage(ttk.Frame):
         irmscode -- integer code to be converted
 
         Returns a float value of the input rms current"""
-        i_calib_Code = 257
-        conv_factor = 0.2601 / i_calib_Code
-        irms = float(irmscode * conv_factor)
+        irms = float(irmscode * self.i_conv_factor)
         return irms
