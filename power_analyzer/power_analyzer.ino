@@ -153,6 +153,7 @@ float thdsg_v = 0;
 float thdg_i = 0;
 float thdsg_i = 0;
 
+bool inCalibration = false;
 //ReadTimes
 uint32_t newTime, streamTime, displayTime; //Time-Tracker, seconds-timer, minute-timer
 
@@ -861,7 +862,7 @@ void getCommand()
         startSamplingPC();
         runmode = 2;
       }
-      else if (c2 == 'd') //Single Voltage Value
+      else if (c2 == 'd') //Single Current Value
       {
         icodes = ACS_ICODE;
         Serial.printf("%u\n", icodes);
@@ -988,6 +989,7 @@ void getCommand()
       powerSampling = false;
       connectComputer(false);
       runmode = 0;
+      inCalibration = false;
       calcFFT = false;
     }
     else if (c1 == 'c') //Computer Commands
@@ -1013,6 +1015,11 @@ void getCommand()
 #endif
         voltage_detected = true;
       }
+      else if (c2 == 'a'){ //Calibration mode
+        inCalibration = !inCalibration;
+        Serial.printf("%u\n",inCalibration);
+        toCalibrationMode();
+      }
     }
   }
 }
@@ -1032,7 +1039,7 @@ void connectComputer(bool conn)
   {
     display.clearDisplay();
     display.setCursor(0, 0);
-    display.println("Computer Connected.Output Disabled");
+    display.println("Computer Connected.\nOutput Disabled");
     display.display();
     SerialUSB1.println("Computer connected");
   }
@@ -1040,6 +1047,32 @@ void connectComputer(bool conn)
   {
     SerialUSB1.println("Computer disconnected");
   }
+}
+
+void toCalibrationMode(){
+  uint32_t currTime = millis();
+  uint32_t calTime = millis();
+  uint32_t timeDisplay = millis();
+  print_time_in_min_sec(300000);
+  SerialUSB1.print("CalibrationMode:");
+  SerialUSB1.print(inCalibration);
+  SerialUSB1.println();
+  while(inCalibration && currTime < calTime + 300000){ //5 min calibration time
+    currTime = millis();
+    if(currTime > timeDisplay+10000){
+      print_time_in_min_sec(300000-currTime);
+      timeDisplay=currTime;
+    }
+     if (currTime > checkTime + wdTimeout - 5000)
+    {
+      wdt.feed();
+      checkTime = currTime;
+    }
+    getCommand();
+    calTime = currTime;
+  }
+  inCalibration = false;
+  updateDisplay();
 }
 
 //Conversion helpers
@@ -1129,6 +1162,24 @@ void timeSync()
   }
 }
 
+void print_time_in_min_sec(uint32_t ms){
+  if (ms < 60000){ //60s remaining
+    int secs = (int)(ms/1000)+1;
+    display.clearDisplay();
+    display.setCursor(5,10);
+    display.printf("Calibration Mode\n");
+    display.printf("%u s remaining", secs);
+    display.display();
+  }
+  else{
+    int mins = (int)(ms/60000);
+    display.clearDisplay();
+    display.setCursor(5,10);
+    display.printf("Calibration Mode\n");
+    display.printf("%u min remaining", mins);
+    display.display();
+  }
+}
 void sendCalibration()
 {
   uint32_t tmp = MCU_read(VRMS_cal_address, false);

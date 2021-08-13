@@ -275,6 +275,8 @@ class mainWindow(tk.Tk):
             try:
                 self.sBus.writeString('es')
                 tmp = str(self.sBus.readLine()).split(',')
+                v_conv_factor = 0
+                i_conv_factor = 0
                 if (tmp[0] == "VRMS"):
                     v_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[1]), 23, 24)
                 tmp = str(self.sBus.readLine()).split(',')
