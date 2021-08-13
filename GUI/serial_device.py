@@ -140,6 +140,8 @@ class SerialBus:
                 value = int(self.readLine())
             except TypeError as e:
                 print(e)
+            except ValueError as e:
+                print(e)
 
         return value
 
