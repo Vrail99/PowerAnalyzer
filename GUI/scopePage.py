@@ -79,7 +79,7 @@ class ScopeWindow(tk.Toplevel):
         self.fullTHD = 0  # THD over 150 Periods value
         self.thdCounter = 0  # Counter for 10-period thd and fft
 
-        self.currRange = 1  # 0: automode
+        self.currRange = 0  # 0: automode
         self.voltRange = 350  # Volt
         self.timeRange = 200  # Milliseconds
         self.freq_range = 2000  # Hz

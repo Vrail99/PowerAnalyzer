@@ -220,7 +220,8 @@ class CalibrationWizard(tk.Toplevel):
         final_offset = current_offset+corr_steps
 
         if final_offset > 255 or final_offset < -256:
-            print("Offset too large/too small")
+            print("Offset too large/too small:", final_offset)
+
             return
         try:
             self.sBus.writeEEPROMValue('0x0B', final_offset, '0xFFFFFE00', 0)

@@ -6,7 +6,7 @@ encoding utf-8
 Sheet 1 1
 Title "Power Analyzer with an ACS71020 and a Teensy"
 Date ""
-Rev "V2.1"
+Rev "V2.2"
 Comp ""
 Comment1 ""
 Comment2 ""
@@ -249,10 +249,10 @@ Connection ~ 5700 3950
 Wire Wire Line
 	6400 1800 6150 1800
 $Comp
-L pspice:C C1
+L pspice:C C3
 U 1 1 5F0E6E9C
 P 5700 2550
-F 0 "C1" H 5950 2550 50  0000 C CNN
+F 0 "C3" H 5950 2550 50  0000 C CNN
 F 1 "10u" H 5950 2650 50  0000 C CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 5700 2550 50  0001 C CNN
 F 3 "http://datasheets.avx.com/TAC.pdf" H 5700 2550 50  0001 C CNN
@@ -396,10 +396,10 @@ Wire Wire Line
 	7150 3450 7150 3950
 NoConn ~ 7200 2100
 $Comp
-L pspice:C C2
+L pspice:C C1
 U 1 1 5F1DAD16
 P 6100 5350
-F 0 "C2" H 6350 5350 50  0000 C CNN
+F 0 "C1" H 6350 5350 50  0000 C CNN
 F 1 "100n" H 6350 5450 50  0000 C CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 6100 5350 50  0001 C CNN
 F 3 "~" H 6100 5350 50  0001 C CNN
@@ -441,7 +441,7 @@ Text Label 2900 4450 0    50   ~ 0
 IP-
 Text Label 6100 2300 0    50   ~ 0
 VISO
-Text Label 7800 3700 0    50   ~ 0
+Text Label 7800 3000 0    50   ~ 0
 CS1
 Text Label 7800 3100 0    50   ~ 0
 MOSI1
@@ -557,15 +557,15 @@ Wire Wire Line
 Wire Wire Line
 	7150 5600 7400 5600
 $Comp
-L pspice:C C3
+L pspice:C C4
 U 1 1 5F1E3B68
-P 7400 5350
-F 0 "C3" H 7650 5350 50  0000 C CNN
-F 1 "100n" H 7650 5450 50  0000 C CNN
-F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 7400 5350 50  0001 C CNN
-F 3 "~" H 7400 5350 50  0001 C CNN
-F 4 "478-12791-1-ND" H 7400 5350 50  0001 C CNN "Digikey SKU"
-	1    7400 5350
+P 7600 2550
+F 0 "C4" H 7850 2550 50  0000 C CNN
+F 1 "10u" H 7850 2650 50  0000 C CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 7600 2550 50  0001 C CNN
+F 3 "~" H 7600 2550 50  0001 C CNN
+F 4 "478-12791-1-ND" H 7600 2550 50  0001 C CNN "Digikey SKU"
+	1    7600 2550
 	1    0    0    -1  
 $EndComp
 Text Notes 900  1100 0    50   ~ 0
@@ -713,15 +713,15 @@ Wire Wire Line
 Wire Wire Line
 	6100 2200 6400 2200
 $Comp
-L pspice:C C4
+L pspice:C C2
 U 1 1 5F272969
-P 7600 2550
-F 0 "C4" H 7350 2500 50  0000 C CNN
-F 1 "10u" H 7350 2600 50  0000 C CNN
-F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 7600 2550 50  0001 C CNN
-F 3 "http://datasheets.avx.com/TAC.pdf" H 7600 2550 50  0001 C CNN
-F 4 " 478-2561-2-ND " H 7600 2550 50  0001 C CNN "Digikey SKU"
-	1    7600 2550
+P 7400 5350
+F 0 "C2" H 7150 5300 50  0000 C CNN
+F 1 "100n" H 7150 5400 50  0000 C CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 7400 5350 50  0001 C CNN
+F 3 "http://datasheets.avx.com/TAC.pdf" H 7400 5350 50  0001 C CNN
+F 4 " 478-2561-2-ND " H 7400 5350 50  0001 C CNN "Digikey SKU"
+	1    7400 5350
 	-1   0    0    1   
 $EndComp
 Wire Wire Line
@@ -798,13 +798,9 @@ Connection ~ 7700 3100
 Wire Wire Line
 	7700 4850 7700 3100
 Wire Wire Line
-	7300 3700 8000 3700
-Wire Wire Line
 	7800 4000 7800 5000
 Wire Wire Line
 	7150 4250 7300 4250
-Wire Wire Line
-	7300 3700 7300 4250
 $Comp
 L Connector:Conn_01x01_Female J2
 U 1 1 5F4E540D
@@ -910,8 +906,6 @@ F 3 "~" H 9750 5250 50  0001 C CNN
 $EndComp
 Text GLabel 10200 4400 2    50   Output ~ 0
 3.3V
-Wire Wire Line
-	8000 3400 7950 3400
 Text GLabel 9550 5050 0    50   Input ~ 0
 3.3V
 Wire Wire Line
@@ -956,4 +950,8 @@ Wire Wire Line
 	2400 2850 2650 2850
 Text Notes 550  7750 0    50   ~ 0
 Copyright CERN 2013.\nThis documentation describes Open Hardware and is licensed under the CERN OHL v. 1.2.\n\nYou may redistribute and modify this documentation under the terms of the \nCERN OHL v.1.2. (http://ohwr.org/cernohl).\n\nThis documentation is distributed WITHOUT ANY EXPRESS OR IMPLIED \nWARRANTY, INCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY\nAND FITNESS FOR A PARTICULAR PURPOSE. \nPlease see the CERN OHL v.1.2 for applicable conditions
+Wire Wire Line
+	8000 3000 7300 3000
+Wire Wire Line
+	7300 3000 7300 4250
 $EndSCHEMATC
