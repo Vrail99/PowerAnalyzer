@@ -399,7 +399,7 @@ class mainWindow(tk.Tk):
 
 if __name__ == '__main__':
     p = [MainPage, LivePage, SettingsPage]
-    os.chdir(os.path.dirname(sys.argv[0]))
+    os.chdir(os.path.dirname(__file__))
     app = mainWindow(p)
     app.protocol("WM_DELETE_WINDOW", app.endProgram)
     app.mainloop()
