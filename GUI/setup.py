@@ -20,4 +20,4 @@ setup(name='Power Analyzer',
       version=2.2,
       description="A GUI for the Power Analyzer based on the ACS71020/ACS37800",
       options={'build_exe': build_exe_options},
-      executables=[Executable("main.py", base)])
+      executables=[Executable("main.py", base=base)])
