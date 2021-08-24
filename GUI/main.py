@@ -27,6 +27,8 @@ import serial_device
 import tkinter as tk
 from tkinter import ttk
 import time
+import sys
+import os
 
 # Own modules
 from settingsPage import SettingsPage
@@ -52,7 +54,7 @@ class mainWindow(tk.Tk):
     """tkinter.Tk() backend"""
 
     def __init__(self, pages: list, *args, **kwargs) -> None:
-        """Initializes 
+        """Initializes
             - the serial bus,
             - individual pages as classes,
             - the menu
@@ -307,7 +309,7 @@ class mainWindow(tk.Tk):
         self.scopeWindow.destroy()
 
     def _closeSerial(self) -> None:
-        """Closes the serial connection, flushes the bus and 
+        """Closes the serial connection, flushes the bus and
         disables GUI Elements which use this connection"""
         self.sBus.flushBus()
         self.sBus.closePort()
@@ -347,7 +349,7 @@ class mainWindow(tk.Tk):
     def _show_frame(self, frame: tk.Frame) -> None:
         """Raises the frame on top of all others
 
-            Keyword Arguments: 
+            Keyword Arguments:
 
             frame -- tk.Frame Object to be raised on top"""
         t = self.pages[frame]
@@ -397,6 +399,7 @@ class mainWindow(tk.Tk):
 
 if __name__ == '__main__':
     p = [MainPage, LivePage, SettingsPage]
+    os.chdir(os.path.dirname(sys.argv[0]))
     app = mainWindow(p)
     app.protocol("WM_DELETE_WINDOW", app.endProgram)
     app.mainloop()

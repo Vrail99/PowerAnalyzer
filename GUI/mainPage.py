@@ -21,9 +21,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import tkinter as tk
 from tkinter import ttk
 import os
+import sys
 from PIL import Image, ImageTk
 
 ############################################################################################################################
@@ -34,7 +34,7 @@ from PIL import Image, ImageTk
 class MainPage(ttk.Frame):
     def __init__(self, parent: ttk.Frame, controller) -> None:
         """
-        Init of Page 
+        Init of Page
 
         Keyword Arguments: \n
         parent -- Parent widget it is placed within \n
@@ -45,6 +45,7 @@ class MainPage(ttk.Frame):
         self.contr = controller
         self.sBus = controller.getSerialBus()
         self.name = "Main"
+        print("Current WD after change:", os.getcwd())
 
         self._guiSetup()
 
@@ -53,10 +54,8 @@ class MainPage(ttk.Frame):
         acslabel = ttk.Label(
             self, text="ACS71020 Evaluation Adaptor", style="Titletext.TLabel")
         acslabel.pack()
-        image = Image.open(os.getcwd()+"/acspic2.jpg")
-        photo = ImageTk.PhotoImage(image)
+        photo = ImageTk.PhotoImage(Image.open(os.path.join(os.getcwd(), "acspic2.jpg")))
         label2 = ttk.Label(self, image=photo)
-        label2.image = photo
         label2.pack()
 
     def _getName(self):
