@@ -30,7 +30,6 @@ import _thread
 from tkinter import ttk
 import tkinter as tk
 import numpy as np
-from serial.serialposix import Serial
 import utils
 import tkinter.filedialog
 import serial_device
@@ -111,7 +110,8 @@ class ScopeWindow(tk.Toplevel):
 
         self.startBtn = ttk.Button(
             btnFrm, text="Start", style="TButton", command=self._startCodes)
-        self.stopBtn = ttk.Button(btnFrm, text="Stop", style="TButton", command=self._stopCodes)
+        self.stopBtn = ttk.Button(
+            btnFrm, text="Stop", style="TButton", command=self._stopCodes)
         self.saveBtn = ttk.Button(
             btnFrm, text="Save", style="TButton", command=self._saveWaveform)
         self.startBtn.pack()
@@ -406,7 +406,8 @@ class ScopeWindow(tk.Toplevel):
         if (not self.runCodeThread):
             self._setRadioState(tk.DISABLED)
             self.fullFFT = []
-            self.logfile = open("logfile_" + str(self.logfile_counter) + ".txt", "w")
+            self.logfile = open(
+                "logfile_" + str(self.logfile_counter) + ".txt", "w")
             self.fullTHD = 0
             self.thdCounter = 0
             if self.showPlots == 0:

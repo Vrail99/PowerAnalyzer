@@ -45,7 +45,6 @@ class MainPage(ttk.Frame):
         self.contr = controller
         self.sBus = controller.getSerialBus()
         self.name = "Main"
-        print("Current WD after change:", os.getcwd())
 
         self._guiSetup()
 
@@ -54,8 +53,11 @@ class MainPage(ttk.Frame):
         acslabel = ttk.Label(
             self, text="ACS71020 Evaluation Adaptor", style="Titletext.TLabel")
         acslabel.pack()
-        photo = ImageTk.PhotoImage(Image.open(os.path.join(os.getcwd(), "acspic2.jpg")))
+        path = os.path.join(os.getcwd(), "acspic2.jpg")
+        im = Image.open(path)
+        photo = ImageTk.PhotoImage(im)
         label2 = ttk.Label(self, image=photo)
+        label2.image = photo
         label2.pack()
 
     def _getName(self):

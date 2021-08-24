@@ -133,7 +133,7 @@ class mainWindow(tk.Tk):
 
         # BottomBar with Statuslabel
         self.l_status = ttk.Label(
-            status_buttons, style="TLabel", text="Not connected", width=35)
+            status_buttons, style="TLabel", text="Not connected", width=25)
         self.connbtn = ttk.Button(
             status_buttons, style="TButton", text="Connect", command=lambda: self._openSerial())
         self.disconnbtn = ttk.Button(
