@@ -39,13 +39,19 @@ SOFTWARE.
 
 //Defines for GPIO
 #define ACS_CS 10              //Chip Select for the ACS Chip
-#define ACS_SPI_SPEED 10000000 //SPI Speed setting for the ACS Chip (10 Mhz)
-#define ACS_CUSTOMER_CODE 0x4F70656E
-
-//Display GPIO defines
+  //Display
 #define OLED_RST 14 //20
 #define OLED_DC 15  //21
 #define OLED_CS 16  //22
+
+  //Touch-Controller
+#define TOUCH_NEXT 2
+#define TOUCH_PREV 3
+#define NO_OF_PAGES 6
+uint8_t currPage = NO_OF_PAGES;
+
+#define ACS_SPI_SPEED 10000000 //SPI Speed setting for the ACS Chip (10 Mhz)
+#define ACS_CUSTOMER_CODE 0x4F70656E
 
 #define VRMS_cal_address 0
 #define IRMS_cal_address VRMS_cal_address + 4
@@ -87,6 +93,28 @@ char receivedChars[MAX_RECEIVEABLE];
 #define SAMPLERATE 32
 #define SAMPBUFFLEN 6250
 
+////////////////////////////////////////////////////////////////////////////////
+// Volatile Memory Values
+////////////////////////////////////////////////////////////////////////////////
+uint32_t tmp = 0;
+uint32_t vcodes = 0;
+uint32_t icodes = 0;
+uint32_t flags = 0;
+uint32_t pinst = 0;
+uint32_t numptsout = 0;
+uint32_t pfact = 0;
+uint32_t pImag = 0;
+uint32_t pApp = 0;
+uint32_t pActive = 0;
+uint32_t v_rms;
+uint32_t i_rms;
+uint32_t pact_sec = 0;
+uint32_t irms_sec = 0;
+uint32_t vrms_sec = 0;
+uint32_t pact_min = 0;
+uint32_t irms_min = 0;
+uint32_t vrms_min = 0;
+
 //Timer for acquiring samples
 IntervalTimer smplTimer;
 boolean samplingDone = false;
@@ -115,28 +143,6 @@ uint32_t iCodeBuffer[SAMPBUFFLEN] = {0};
 float vSamps[FFTBUFFLEN] = {0.0};
 float iSamps[FFTBUFFLEN] = {0.0};
 float Mags[FFTLEN] = {0.0};
-
-////////////////////////////////////////////////////////////////////////////////
-// Volatile Memory Values
-////////////////////////////////////////////////////////////////////////////////
-uint32_t tmp = 0;
-uint32_t vcodes = 0;
-uint32_t icodes = 0;
-uint32_t flags = 0;
-uint32_t pinst = 0;
-uint32_t numptsout = 0;
-uint32_t pfact = 0;
-uint32_t pImag = 0;
-uint32_t pApp = 0;
-uint32_t pActive = 0;
-uint32_t v_rms;
-uint32_t i_rms;
-uint32_t pact_sec = 0;
-uint32_t irms_sec = 0;
-uint32_t vrms_sec = 0;
-uint32_t pact_min = 0;
-uint32_t irms_min = 0;
-uint32_t vrms_min = 0;
 
 float zcd_thresh = 0.2;
 
@@ -222,6 +228,9 @@ void setup()
   streamTime = millis();  //
   displayTime = millis(); //Display timing
   checkTime = millis();
+
+  attachInterrupt(digitalPinToInterrupt(TOUCH_NEXT), pageNext, FALLING);
+  attachInterrupt(digitalPinToInterrupt(TOUCH_PREV), pageBack, RISING);
 
   //End of Init
 }
@@ -369,62 +378,6 @@ uint32_t getMaxValueIndex(float values[], uint32_t arrlen)
     }
   }
   return maxIndex;
-}
-
-/*
-  Updates the Display with values
-*/
-void updateDisplay()
-{
-  float temp = calcVRMS();
-  //Updates to the display
-  display.clearDisplay();
-  display.setCursor(0, 0); //Cursor Position top-left
-  if (voltage_detected)
-  {
-    measureFrequency();
-    if (now() < 1357041600) //Now() is less that year 2013
-      display.printf("Zeit: no sync\n");
-    else
-      display.printf("Zeit: %d:%d:%d\n", hour(), minute(), second());
-    display.printf("THD (V): %.2f %%\n", thd_v);
-    if (grouping_en)
-    {
-      display.printf("THDG: %.2f\n", thdg_v);
-      display.printf("THDSG: %.2f\n", thdsg_v);
-    }
-    display.printf("THD (I): %.2f %%\n", thd_i);
-    if (grouping_en)
-    {
-      display.printf("THDG: %.2f\n", thdg_i);
-      display.printf("THDSG: %.2f\n", thdsg_i);
-    }
-    display.printf("Freq: %.2f Hz\n", pwr_f);
-    if (temp < 1)
-      display.printf("Vrms: %.2f mV\n", temp * 1000.0);
-    else
-      display.printf("Vrms: %.2f V\n", temp);
-    temp = calcIRMS();
-    if (temp < 1)
-      display.printf("Irms: %.2f mA\n", temp * 1000.0);
-    else
-      display.printf("Irms: %.2f A\n", temp);
-    //pActive = ACS_PACTIVE;
-    //display.printf("Power %.2f W\n", ConvertSignedFixedPoint(pActive, 15, 17) * MAXPOWER);
-    pact_sec = ACSchip.readReg(0x28) & 0x1FFFF; //17-bit FP, 15 frac
-    display.printf("Power %.2f W\n", ConvertSignedFixedPoint(pact_sec, 15, 17) * MAXPOWER);
-    pfact = ACS_PF;
-    temp = ConvertSignedFixedPoint(pfact, 9, 11);
-    temp = temp * distortion_factor;
-    display.printf("P-Factor: %.2f\n", temp);
-    //float ang = acos(temp) * (180 / PI);
-    display.printf("Winkel: %.2fdeg\n", phaseangle);
-  }
-  else
-  {
-    display.printf("Voltage too low: %2f", temp);
-  }
-  display.display();
 }
 
 /*
@@ -689,10 +642,8 @@ void startSamplingFFT()
   while (zcd != 1)
     zcd = ACSchip.readReg(0x2D) & 0x1;
   bool err = smplTimer.begin(getSamples_FFT, FFTSAMPLERATE);
-#ifdef DEBUG
   if (!err)
     SerialUSB1.println("Error starting Timer");
-#endif
 }
 
 // Start normal Sampling for PC calculation
@@ -1015,9 +966,10 @@ void getCommand()
 #endif
         voltage_detected = true;
       }
-      else if (c2 == 'a'){ //Calibration mode
+      else if (c2 == 'a')
+      { //Calibration mode
         inCalibration = !inCalibration;
-        Serial.printf("%u\n",inCalibration);
+        Serial.printf("%u\n", inCalibration);
         toCalibrationMode();
       }
     }
@@ -1049,7 +1001,8 @@ void connectComputer(bool conn)
   }
 }
 
-void toCalibrationMode(){
+void toCalibrationMode()
+{
   uint32_t currTime = millis();
   uint32_t calTime = millis();
   uint32_t timeDisplay = millis();
@@ -1057,13 +1010,15 @@ void toCalibrationMode(){
   SerialUSB1.print("CalibrationMode:");
   SerialUSB1.print(inCalibration);
   SerialUSB1.println();
-  while(inCalibration && currTime < calTime + 300000){ //5 min calibration time
+  while (inCalibration && currTime < calTime + 300000)
+  { //5 min calibration time
     currTime = millis();
-    if(currTime > timeDisplay+10000){
-      print_time_in_min_sec(300000-currTime);
-      timeDisplay=currTime;
+    if (currTime > timeDisplay + 10000)
+    {
+      print_time_in_min_sec(300000 - currTime);
+      timeDisplay = currTime;
     }
-     if (currTime > checkTime + wdTimeout - 5000)
+    if (currTime > checkTime + wdTimeout - 5000)
     {
       wdt.feed();
       checkTime = currTime;
@@ -1162,19 +1117,22 @@ void timeSync()
   }
 }
 
-void print_time_in_min_sec(uint32_t ms){
-  if (ms < 60000){ //60s remaining
-    int secs = (int)(ms/1000)+1;
+void print_time_in_min_sec(uint32_t ms)
+{
+  if (ms < 60000)
+  { //60s remaining
+    int secs = (int)(ms / 1000) + 1;
     display.clearDisplay();
-    display.setCursor(5,10);
+    display.setCursor(5, 10);
     display.printf("Calibration Mode\n");
     display.printf("%u s remaining", secs);
     display.display();
   }
-  else{
-    int mins = (int)(ms/60000);
+  else
+  {
+    int mins = (int)(ms / 60000);
     display.clearDisplay();
-    display.setCursor(5,10);
+    display.setCursor(5, 10);
     display.printf("Calibration Mode\n");
     display.printf("%u min remaining", mins);
     display.display();
@@ -1271,4 +1229,70 @@ float calcTHDSG(float frequencies[], float output[], int order)
   }
   thdsg = sqrt(thdsg) * 100;
   return thdsg;
+}
+
+/*
+  Updates the Display with values
+*/
+void updateDisplay()
+{
+  float temp = calcVRMS();
+  //Updates to the display
+  display.clearDisplay();
+  display.setCursor(0, 0); //Cursor Position top-left
+  if (voltage_detected)
+  {
+    measureFrequency();
+    if (now() < 1357041600) //Now() is less that year 2013
+      display.printf("Zeit: no sync\n");
+    else
+      display.printf("Zeit: %02d:%02d:%02d\n", hour(),minute(),second());
+    display.printf("THD (V): %.2f %%\n", thd_v);
+    if (grouping_en)
+    {
+      display.printf("THDG: %.2f\n", thdg_v);
+      display.printf("THDSG: %.2f\n", thdsg_v);
+    }
+    display.printf("THD (I): %.2f %%\n", thd_i);
+    if (grouping_en)
+    {
+      display.printf("THDG: %.2f\n", thdg_i);
+      display.printf("THDSG: %.2f\n", thdsg_i);
+    }
+    display.printf("Freq: %.2f Hz\n", pwr_f);
+    if (temp < 1)
+      display.printf("Vrms: %.2f mV\n", temp * 1000.0);
+    else
+      display.printf("Vrms: %.2f V\n", temp);
+    temp = calcIRMS();
+    if (temp < 1)
+      display.printf("Irms: %.2f mA\n", temp * 1000.0);
+    else
+      display.printf("Irms: %.2f A\n", temp);
+    //pActive = ACS_PACTIVE;
+    //display.printf("Power %.2f W\n", ConvertSignedFixedPoint(pActive, 15, 17) * MAXPOWER);
+    pact_sec = ACSchip.readReg(0x28) & 0x1FFFF; //17-bit FP, 15 frac
+    display.printf("Power %.2f W\n", ConvertSignedFixedPoint(pact_sec, 15, 17) * MAXPOWER);
+    pfact = ACS_PF;
+    temp = ConvertSignedFixedPoint(pfact, 9, 11);
+    temp = temp * distortion_factor;
+    display.printf("P-Factor: %.2f\n", temp);
+    //float ang = acos(temp) * (180 / PI);
+    display.printf("Winkel: %.2fdeg\n", phaseangle);
+  }
+  else
+  {
+    display.printf("Voltage too low:\n %2f", temp);
+  }
+  display.display();
+}
+
+void pageNext(){
+  if(currPage < NO_OF_PAGES-1) currPage++;
+  SerialUSB1.printf("NEXT! -> Page Nr: %d", currPage);
+}
+
+void pageBack(){
+  if (currPage > 0) currPage--;
+  SerialUSB1.printf("PREV! -> Page Nr: %d", currPage);
 }
