@@ -45,8 +45,8 @@ SOFTWARE.
 #define OLED_CS 16  //22
 
   //Touch-Controller
-#define TOUCH_NEXT 2
-#define TOUCH_PREV 3
+#define TOUCH_NEXT 3
+#define TOUCH_PREV 2
 #define NO_OF_PAGES 6
 uint8_t currPage = NO_OF_PAGES;
 
@@ -67,7 +67,9 @@ float conv_factor_IRMS = 1.015 * pow(10, -3);
 ACS71020 ACSchip(ACS_SPI_SPEED, ACS_CS, ACS_CUSTOMER_CODE);
 
 //Display instance
-Adafruit_SSD1327 display(128, 128, &SPI, OLED_DC, OLED_RST, OLED_CS);
+#define DISP_WIDTH 128
+#define DISP_HEIGHT 128
+Adafruit_SSD1327 display(DISP_WIDTH, DISP_HEIGHT, &SPI, OLED_DC, OLED_RST, OLED_CS);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Constants
@@ -232,6 +234,7 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(TOUCH_NEXT), pageNext, FALLING);
   attachInterrupt(digitalPinToInterrupt(TOUCH_PREV), pageBack, RISING);
 
+  currPage = 4;
   //End of Init
 }
 
@@ -272,6 +275,7 @@ void loop()
         thdg_v = calcTHDG(Mags, fgroups, 17);
         thdsg_v = calcTHDSG(Mags, fgroups, 17);
       }
+      if(currPage == 4) displayFFT();
       //FFT for Current samples
       arm_cfft_radix4_f32(&fftInstance, iSamps); //In-Place FFT
       float angle_i = atan2(iSamps[21], iSamps[20]);
@@ -290,7 +294,7 @@ void loop()
         thdg_i = calcTHDG(Mags, fgroups, 17);
         thdsg_i = calcTHDSG(Mags, fgroups, 17);
       }
-
+      
       updateDisplay();
 
       //Start Sampling again
@@ -1236,6 +1240,9 @@ float calcTHDSG(float frequencies[], float output[], int order)
 */
 void updateDisplay()
 {
+  if (currPage == 4){
+    
+  }else{
   float temp = calcVRMS();
   //Updates to the display
   display.clearDisplay();
@@ -1283,6 +1290,20 @@ void updateDisplay()
   else
   {
     display.printf("Voltage too low:\n %2f", temp);
+  }
+  display.display();
+  }
+}
+
+void displayFFT(){
+  display.clearDisplay();
+  //Number of Magnitudes: 4096, with binSize = 5
+  float maxMag = Mags[getMaxValueIndex(Mags, 4096)];
+  float pix_per_volt = (DISP_HEIGHT-20)/maxMag;
+  for(int i=0; i<DISP_WIDTH; i++){
+    uint16_t mag = round(Mags[i]*pix_per_volt); //Rounded value
+    SerialUSB1.printf("Mag: %f", mag);
+    display.drawLine(i, DISP_HEIGHT, i, DISP_HEIGHT-10-mag, SSD1327_WHITE);
   }
   display.display();
 }
