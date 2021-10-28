@@ -33,18 +33,18 @@ SOFTWARE.
 #include <math.h>
 #include <Watchdog_t4.h> //Watchdog Library for reset on error
 #include <EEPROM.h>
-
+#include <SDhandlerPA.h>
 //Uncomment for Debug messages on Serial Port 3
 //#define DEBUG
 
 //Defines for GPIO
-#define ACS_CS 10              //Chip Select for the ACS Chip
-  //Display
+#define ACS_CS 10 //Chip Select for the ACS Chip
+//Display
 #define OLED_RST 14 //20
 #define OLED_DC 15  //21
 #define OLED_CS 16  //22
 
-  //Touch-Controller
+//Touch-Controller
 #define TOUCH_NEXT 3
 #define TOUCH_PREV 2
 #define NO_OF_PAGES 6
@@ -66,6 +66,9 @@ float conv_factor_IRMS = 1.015 * pow(10, -3);
 //Creation of a Chip instance
 ACS71020 ACSchip(ACS_SPI_SPEED, ACS_CS, ACS_CUSTOMER_CODE);
 
+//SD-instance
+SDhandlerPA SDCard(2);
+
 //Display instance
 #define DISP_WIDTH 128
 #define DISP_HEIGHT 128
@@ -73,7 +76,7 @@ Adafruit_SSD1327 display(DISP_WIDTH, DISP_HEIGHT, &SPI, OLED_DC, OLED_RST, OLED_
 
 ////////////////////////////////////////////////////////////////////////////////
 // Constants
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 //Characteristics
 #define MAXVOLT 366               //Voltage divider at Input
@@ -200,6 +203,9 @@ void setup()
   //MCU_write(VRMS_cal_address, 21280, false);
   //MCU_write(IRMS_cal_address, 257, false);
 
+  //Begin the sd-instance
+  SDCard.checkBegin();
+  
   //Read current calibration factors from the chip
   uint32_t tmpInt = MCU_read(VRMS_cal_address, false); //Read VRMS conversionFactor
   conv_factor_VRMS = ConvertUnsignedFixedPoint(tmpInt, 23, 24);
@@ -226,15 +232,17 @@ void setup()
     SerialUSB1.printf("Voltage Detected: %.2f V_RMS", tmp);
   }
 
+  //Touch-PIN configure
+  attachInterrupt(digitalPinToInterrupt(TOUCH_NEXT), pageNext, FALLING);
+  attachInterrupt(digitalPinToInterrupt(TOUCH_PREV), pageBack, RISING);
+  currPage = 4;
+
+  SDCard.readAllFiles();
+
   //Initialization of timers
   streamTime = millis();  //
   displayTime = millis(); //Display timing
   checkTime = millis();
-
-  attachInterrupt(digitalPinToInterrupt(TOUCH_NEXT), pageNext, FALLING);
-  attachInterrupt(digitalPinToInterrupt(TOUCH_PREV), pageBack, RISING);
-
-  currPage = 4;
   //End of Init
 }
 
@@ -275,7 +283,8 @@ void loop()
         thdg_v = calcTHDG(Mags, fgroups, 17);
         thdsg_v = calcTHDSG(Mags, fgroups, 17);
       }
-      if(currPage == 4) displayFFT();
+      if (currPage == 4)
+        displayFFT();
       //FFT for Current samples
       arm_cfft_radix4_f32(&fftInstance, iSamps); //In-Place FFT
       float angle_i = atan2(iSamps[21], iSamps[20]);
@@ -294,7 +303,9 @@ void loop()
         thdg_i = calcTHDG(Mags, fgroups, 17);
         thdsg_i = calcTHDSG(Mags, fgroups, 17);
       }
-      
+      if (currPage == 5)
+        displayFFT();
+
       updateDisplay();
 
       //Start Sampling again
@@ -976,6 +987,10 @@ void getCommand()
         Serial.printf("%u\n", inCalibration);
         toCalibrationMode();
       }
+      else if (c2 == 's') //SD-Read-mode
+      {
+        SDCard.readAllFiles();
+      }
     }
   }
 }
@@ -1240,80 +1255,93 @@ float calcTHDSG(float frequencies[], float output[], int order)
 */
 void updateDisplay()
 {
-  if (currPage == 4){
-    
-  }else{
-  float temp = calcVRMS();
-  //Updates to the display
-  display.clearDisplay();
-  display.setCursor(0, 0); //Cursor Position top-left
-  if (voltage_detected)
+  if (currPage == 4 || currPage == 5)
   {
-    measureFrequency();
-    if (now() < 1357041600) //Now() is less that year 2013
-      display.printf("Zeit: no sync\n");
-    else
-      display.printf("Zeit: %02d:%02d:%02d\n", hour(),minute(),second());
-    display.printf("THD (V): %.2f %%\n", thd_v);
-    if (grouping_en)
-    {
-      display.printf("THDG: %.2f\n", thdg_v);
-      display.printf("THDSG: %.2f\n", thdsg_v);
-    }
-    display.printf("THD (I): %.2f %%\n", thd_i);
-    if (grouping_en)
-    {
-      display.printf("THDG: %.2f\n", thdg_i);
-      display.printf("THDSG: %.2f\n", thdsg_i);
-    }
-    display.printf("Freq: %.2f Hz\n", pwr_f);
-    if (temp < 1)
-      display.printf("Vrms: %.2f mV\n", temp * 1000.0);
-    else
-      display.printf("Vrms: %.2f V\n", temp);
-    temp = calcIRMS();
-    if (temp < 1)
-      display.printf("Irms: %.2f mA\n", temp * 1000.0);
-    else
-      display.printf("Irms: %.2f A\n", temp);
-    //pActive = ACS_PACTIVE;
-    //display.printf("Power %.2f W\n", ConvertSignedFixedPoint(pActive, 15, 17) * MAXPOWER);
-    pact_sec = ACSchip.readReg(0x28) & 0x1FFFF; //17-bit FP, 15 frac
-    display.printf("Power %.2f W\n", ConvertSignedFixedPoint(pact_sec, 15, 17) * MAXPOWER);
-    pfact = ACS_PF;
-    temp = ConvertSignedFixedPoint(pfact, 9, 11);
-    temp = temp * distortion_factor;
-    display.printf("P-Factor: %.2f\n", temp);
-    //float ang = acos(temp) * (180 / PI);
-    display.printf("Winkel: %.2fdeg\n", phaseangle);
   }
   else
   {
-    display.printf("Voltage too low:\n %2f", temp);
-  }
-  display.display();
+    float temp = calcVRMS();
+    //Updates to the display
+    display.clearDisplay();
+    display.setCursor(0, 0); //Cursor Position top-left
+    if (voltage_detected)
+    {
+      measureFrequency();
+      if (now() < 1357041600) //Now() is less that year 2013
+        display.printf("Zeit: no sync\n");
+      else
+        display.printf("Zeit: %02d:%02d:%02d\n", hour(), minute(), second());
+      display.printf("THD (V): %.2f %%\n", thd_v);
+      if (grouping_en)
+      {
+        display.printf("THDG: %.2f\n", thdg_v);
+        display.printf("THDSG: %.2f\n", thdsg_v);
+      }
+      display.printf("THD (I): %.2f %%\n", thd_i);
+      if (grouping_en)
+      {
+        display.printf("THDG: %.2f\n", thdg_i);
+        display.printf("THDSG: %.2f\n", thdsg_i);
+      }
+      display.printf("Freq: %.2f Hz\n", pwr_f);
+      if (temp < 1)
+        display.printf("Vrms: %.2f mV\n", temp * 1000.0);
+      else
+        display.printf("Vrms: %.2f V\n", temp);
+      temp = calcIRMS();
+      if (temp < 1)
+        display.printf("Irms: %.2f mA\n", temp * 1000.0);
+      else
+        display.printf("Irms: %.2f A\n", temp);
+      //pActive = ACS_PACTIVE;
+      //display.printf("Power %.2f W\n", ConvertSignedFixedPoint(pActive, 15, 17) * MAXPOWER);
+      pact_sec = ACSchip.readReg(0x28) & 0x1FFFF; //17-bit FP, 15 frac
+      display.printf("Power %.2f W\n", ConvertSignedFixedPoint(pact_sec, 15, 17) * MAXPOWER);
+      pfact = ACS_PF;
+      temp = ConvertSignedFixedPoint(pfact, 9, 11);
+      temp = temp * distortion_factor;
+      display.printf("P-Factor: %.2f\n", temp);
+      //float ang = acos(temp) * (180 / PI);
+      display.printf("Winkel: %.2fdeg\n", phaseangle);
+    }
+    else
+    {
+      display.printf("Voltage too low:\n %2f", temp);
+    }
+    display.display();
   }
 }
 
-void displayFFT(){
+void displayFFT()
+{
   display.clearDisplay();
+  display.setCursor(0, 0);
+  if (currPage == 4)
+    display.print("Voltage FFT 0-640 Hz");
+  else
+    display.print("Current-FFT 0-640 Hz");
   //Number of Magnitudes: 4096, with binSize = 5
   float maxMag = Mags[getMaxValueIndex(Mags, 4096)];
-  float pix_per_volt = (DISP_HEIGHT-20)/maxMag;
-  for(int i=0; i<DISP_WIDTH; i++){
-    uint16_t mag = round(Mags[i]*pix_per_volt); //Rounded value
+  float pix_per_volt = (DISP_HEIGHT - 20) / maxMag;
+  for (int i = 0; i < DISP_WIDTH; i++)
+  {
+    uint16_t mag = round(Mags[i] * pix_per_volt); //Rounded value
     SerialUSB1.printf("Mag: %f", mag);
-    display.drawLine(i, DISP_HEIGHT, i, DISP_HEIGHT-10-mag, SSD1327_WHITE);
+    display.drawLine(i, DISP_HEIGHT, i, DISP_HEIGHT - 10 - mag, SSD1327_WHITE);
   }
   display.display();
 }
 
-void pageNext(){
-  if(currPage < NO_OF_PAGES-1) currPage++;
+void pageNext()
+{
+  if (currPage < NO_OF_PAGES - 1)
+    currPage++;
   SerialUSB1.printf("NEXT! -> Page Nr: %d", currPage);
 }
 
-void pageBack(){
-  if (currPage > 0) currPage--;
+void pageBack()
+{
+  if (currPage > 0)
+    currPage--;
   SerialUSB1.printf("PREV! -> Page Nr: %d", currPage);
 }
