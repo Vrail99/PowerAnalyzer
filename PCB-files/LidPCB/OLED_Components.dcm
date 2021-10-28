@@ -1,0 +1,12 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP OLED-Display
+D ER-OLED015-3W
+F https://www.buydisplay.com/download/manual/ER-OLED015-3_Datasheet.pdf
+$ENDCMP
+#
+$CMP R1200N002A-TR-FE
+F https://www.n-redc.co.jp/en/pdf/datasheet/r1200-ea.pdf
+$ENDCMP
+#
+#End Doc Library

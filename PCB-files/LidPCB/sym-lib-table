@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name OLED_Components)(type Legacy)(uri ${KIPRJMOD}/OLED_Components.lib)(options "")(descr ""))
+  (lib (name CAP1293)(type Legacy)(uri ${KIPRJMOD}/CAP1293.lib)(options "")(descr ""))
+)

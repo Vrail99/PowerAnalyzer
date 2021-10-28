@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name LidPCB)(type KiCad)(uri ${KIPRJMOD}/LidPCB.pretty)(options "")(descr ""))
+)
