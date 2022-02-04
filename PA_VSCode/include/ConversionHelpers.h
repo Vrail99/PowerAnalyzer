@@ -12,11 +12,9 @@
  *    width       - the width of the bitfield
  *    returns     - the sign extended bitfield
  */
-int32_t SignExtendBitfield(uint32_t data, uint16_t width)
-{
+int32_t SignExtendBitfield(uint32_t data, uint16_t width) {
     // If the bitfield is the width of the variable, don't bother trying to sign extend (it already is)
-    if (width == 32)
-    {
+    if (width == 32)     {
         return (int32_t)data;
     }
 
@@ -36,16 +34,12 @@ int32_t SignExtendBitfield(uint32_t data, uint16_t width)
  *    width       - the width of the bitfield
  *    returns     - the floating point number
  */
-float ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width)
-{
+float ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width) {
     uint32_t mask;
 
-    if (width == 32)
-    {
+    if (width == 32)     {
         mask = 0xFFFFFFFF;
-    }
-    else
-    {
+    }     else     {
         mask = (1UL << width) - 1UL;
     }
 
@@ -61,10 +55,22 @@ float ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint1
  *    returns     - the floating point number
  */
 
-float ConvertSignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width)
-{
+float ConvertSignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width) {
     int32_t signedValue = SignExtendBitfield(inputValue, width);
     return (float)signedValue / (float)(1L << binaryPoint);
+}
+
+uint32_t getMaxValueIndex(float *values, uint32_t arrlen) {
+    uint32_t maxIndex = 0;
+    float maxVal = values[maxIndex];
+
+    for (uint32_t i = 0; i < arrlen; i++) {
+        if (values[i] > maxVal) {
+            maxIndex = i;
+            maxVal = values[i];
+        }
+    }
+    return maxIndex;
 }
 
 #endif

@@ -33,29 +33,50 @@ SOFTWARE.
 #include <Watchdog_t4.h> //Watchdog Library for reset on error
 #include <EEPROM.h>
 #include <SD.h>
-
 #include "PowerAnalyzer.h"
+#include "TeensyDebug.h"
+#include <TimerOne.h>
 
 //Uncomment for Debug messages on Serial Port 3
 #define DEBUG
 
-uint8_t currPage = 0;
+//Uncomment for SD init
+//#define INIT_SDCARD
 
-//Values predefined if EEPROM-read error
-float conv_factor_VRMS = 8.384 * pow(10, -6);
-float conv_factor_IRMS = 1.015 * pow(10, -3);
+//Uncomment for Display init
+#define INIT_DISP
+//#define USE_SPI_DISP
+
+//Uncomment for Touch-Sensor init
+#define INIT_TOUCH
+
+//Uncomment for voltage detection, useful for off-grid testing
+//#define DETECT_VOLTAGE
+
+uint8_t currPage = 2;
 
 //Creation of a Chip instance
 ACS71020 ACSchip(ACS_SPI_SPEED, ACS_CS, ACS_CUSTOMER_CODE);
+volatile_memory* vol_mem;
 
+DataLogger logger(ACSchip);
+
+#ifdef USE_SPI_DISP
+//SPI Display instance
 Adafruit_SSD1327 display(DISP_WIDTH, DISP_HEIGHT, &SPI, OLED_DC, OLED_RST, OLED_CS);
+#else
+//I2C Display instance
+Adafruit_SSD1327 display(DISP_WIDTH, DISP_HEIGHT, &Wire, OLED_RST, 1000000, 400000);
+#endif
 
-//Character arrays for input commands
-#define MAX_RECEIVEABLE 32 // Number of characters that can be read
-char receivedChars[MAX_RECEIVEABLE];
+volatile boolean updateDisplay_flag = false;
+//Touch Sensor instance
+volatile boolean touchHappened = false;
+CAP1293 touchSensor; //Defaults to 0x28 in library
 
-extern volatile_memory *vol_mem;
-extern harmonic_factors *fft;
+extern PA_command *command;
+struct harmonic_factors *fft;
+arm_cfft_radix4_instance_f32 fftInstance;
 
 //Timer for acquiring samples
 IntervalTimer smplTimer;
@@ -95,83 +116,160 @@ WDT_T4<WDT3> wdt;
 uint32_t checkTime;
 uint32_t wdTimeout = 30000; //ms
 
+
+//Watchdog Callback function
 void checkCallback() {}
 
+//DisplayUpdate()
+uint8_t dis_count = 0;
+void displayUpdate_IRQ() {
+  dis_count++;
+  if (dis_count > 20) {
+    updateDisplay_flag = true;
+    dis_count = 0;
+  }
+}
+
+//Touch-IRQ
+void touch_IRQ() {
+  touchHappened = true;
+}
+
+//Touch-Input handler
+void touchHandler() {
+  /*if (touchSensor.isLeftTouched() && currPage > 0) {
+    currPage--;
+  } else if (touchSensor.isRightTouched() && currPage < NO_OF_PAGES) {
+    currPage++;
+  }*/
+  uint8_t touchMode = touchSensor.isLeftOrRightTouched(); //0: right, 1: left
+  if (touchMode == 0 && currPage < NO_OF_PAGES)
+    currPage++;
+  else if (touchMode == 1 && currPage > 0)
+    currPage--;
+
+  touchSensor.clearInterrupt();
+}
+
 void setup() {
-  pinMode(SD_CS_PIN, OUTPUT);
-  initVolatileMemory(vol_mem);
   //Init Serial communication
   //Dual Channel Serial Communication
+  Wire.begin();
   Serial.begin(115200);     //Main transmit port
-  SerialUSB1.begin(115200); //Debug and status port
-  while (!Serial && !SerialUSB1) {};
+  #ifdef DEBUG
+  while (!SerialUSB1) { yield(); };
+  #endif
+  vol_mem = ACSchip.init_ACSchip();
+  //logger.init(SD_CS_PIN, SerialUSB1, vol_mem);
 
-  //Display Initialization
+  #ifdef INIT_DISP
+  //Display Initialization 
   if (!display.begin(SSD1327_I2C_ADDRESS)) {
     SerialUSB1.println("Unable to initialize OLED");
     while (1)
       yield();
   }
+  display.setTextSize(2);
   display.clearDisplay();
+  #ifdef DEBUG
+  display.println("DEBUG Mode\nactivated.\n" \
+  "Bootup\nafter\nSerial\nconnection");
   display.display();
+  #endif
+  #endif
+
+  #ifdef INIT_TOUCH
+  while (touchSensor.begin() == false) {
+    SerialUSB1.println("Unable to connect to TouchSensor");
+    //while (1)
+    yield();
+  };
+  #ifdef DEBUG
+  SerialUSB1.println("Touch Sensor initialized");
+  #endif 
+  //Touch-PIN configure
+  pinMode(CAP1293_IRQ, INPUT); //Pulled up in hardware
+  attachInterrupt(digitalPinToInterrupt(CAP1293_IRQ), touchHandler, FALLING);
+  touchSensor.setSensitivity(SENSITIVITY_128X);
+  #endif
 
   //Uncomment the next two rows, if accidentally written values too large or made a factory reset
   //MCU_write(VRMS_cal_address, 21280, false);
   //MCU_write(IRMS_cal_address, 257, false);
-
-  /*if (!SD.begin(SD_CS_PIN)) {
-    SerialUSB1.println("SD initialization failed!");
-    return;
+  #ifdef INIT_SDCARD
+  while (1) {
+    if (!SD.begin(SD_CS_PIN)) {
+      SerialUSB1.println("SD initialization failed!");
+      //while (1)
+      //  yield();
+    } else {
+      break;
+    }
+    delay(500);
   }
-  SerialUSB1.println("SD initialization done.");*/
+  #ifdef DEBUG
+  SerialUSB1.println("SD initialization done.");
+  #endif
+
+  #endif
 
   //Read current calibration factors from the chip
-  uint32_t tmpInt = MCU_read(VRMS_cal_address, false); //Read VRMS conversionFactor
-  conv_factor_VRMS = ConvertUnsignedFixedPoint(tmpInt, 23, 24);
-  tmpInt = MCU_read(IRMS_cal_address, false);
-  conv_factor_IRMS = ConvertUnsignedFixedPoint(tmpInt, 23, 24);
+  uint32_t tmpv = ConvertUnsignedFixedPoint(MCU_read(VRMS_cal_address, false), 23, 24); //Read VRMS conversionFactor
+  uint32_t tmpi = ConvertUnsignedFixedPoint(MCU_read(IRMS_cal_address, false), 23, 24);
+  ACSchip.setConversionFactors(tmpv, tmpi);
 
-  SerialUSB1.printf("Init of Conversion Factors:\n VRMS-conv-factor:%e\n IRMS-conv-factor:%e\n", conv_factor_VRMS, conv_factor_IRMS);
+  #ifdef DEBUG
+  SerialUSB1.printf("Init of Conversion Factors:\n VRMS-conv-factor:%e\n IRMS-conv-factor:%e\n", tmpv, tmpi);
+  #endif
+
 
   //Init of FFT Instance
   arm_status fft_err = arm_cfft_radix4_init_f32(&fftInstance, FFTLEN, 0, 1);
   if (fft_err == ARM_MATH_ARGUMENT_ERROR) {
-    SerialUSB1.println("FFT Len Error");
+    SerialUSB1.println("FFT Len Error, cannot calculate FFT");
     calcFFT = false;
   }
 
+  #ifdef DETECT_VOLTAGE
   //Voltage detection. Requires calibration of sensitivity
-  float tmp = calcVRMS();
+  float tmp = ACSchip.readVRMS(1);
   if (tmp > 100) //At least 10V RMS voltage
   {
+    voltage_detected = true;
     calcFFT = true;
     startSamplingFFT();
-    voltage_detected = true;
-    SerialUSB1.printf("Voltage Detected: %.2f V_RMS", tmp);
+    #ifdef DEBUG
+    SerialUSB1.printf("Voltage Detected: %.2f V_RMS\n", tmp);
+    #endif
   }
+  #endif
 
-  //Touch-PIN configure
-  attachInterrupt(digitalPinToInterrupt(TOUCH_NEXT), pageNext, FALLING);
-  attachInterrupt(digitalPinToInterrupt(TOUCH_PREV), pageBack, RISING);
-  currPage = 1;
-
+  Timer1.initialize(1000000); //Time in Microseconds
+  Timer1.attachInterrupt(displayUpdate_IRQ);
   //Configuration of watchdog Timer
   WDT_timings_t config;
   config.timeout = wdTimeout; /* in ms, 32ms to 522.232s */
   config.callback = checkCallback;
-  wdt.begin(config);
+  //wdt.begin(config);
 
   //Initialization of timers
   streamTime = millis();  //
   displayTime = millis(); //Display timing
   checkTime = millis();
+
+  #ifdef DEBUG
+  SerialUSB1.printf("Init done\n");
+  delay(3000);
+  #endif
   //End of Init
 }
 
 void loop() {
-  newTime = millis(); //Get current millis for timing
-
+  //newTime = millis(); //Get current millis for timing
   if (samplingDone) {
+    #ifdef DEBUG
+    SerialUSB1.println("Sampling Done");
+    #endif
     if (runmode == 1) //Transmit all voltage samples
     {
       for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
@@ -193,11 +291,11 @@ void loop() {
       arm_cfft_radix4_f32(&fftInstance, vSamps);     //In-Place FFT
       float angle_v = atan2(vSamps[21], vSamps[20]); //Angle from pure spectrum
       arm_cmplx_mag_f32(vSamps, Mags, FFTLEN);       //Calculate Magnitudes
-      fft->thd_v = calcTHD(17);                           //Calculate Total Harmonic Distortion
+      fft->thd_v = calcTHD(17, Mags);                           //Calculate Total Harmonic Distortion
       if (fft->grouping_en)                               //If grouping enabled, calculate Harmonic Groups
       {
         float fgroups[17] = { 0 };
-        fft->thdg_v = calcTHDG(Mags, fgroups, 17);
+        fft->thdg_v = calcTHDG(Mags, fgroups, Mags, 17);
         fft->thdsg_v = calcTHDSG(Mags, fgroups, 17);
       }
       if (currPage == 4)
@@ -209,15 +307,15 @@ void loop() {
 
       arm_cmplx_mag_f32(iSamps, Mags, FFTLEN);
       float base_mag_i = Mags[binSize * 2] / (2 * FFTLEN);
-      float tmp = ACS_IRMS; // base in a
+      float tmp = ACSchip.readIRMS(1); // base in a
       tmp = ConvertUnsignedFixedPoint(tmp, 15, 17);
       fft->distortion_factor = (tmp / base_mag_i);
       //SerialUSB1.printf("Dist.-fact:\n Base:%f\n irms:%f\n dist_fact:%f\n", base_mag_i, tmp, distortion_factor);
-      fft->thd_i = calcTHD(17);
+      fft->thd_i = calcTHD(17, Mags);
       if (fft->grouping_en) //If grouping enabled, calculate Harmonic Groups
       {
         float fgroups[17] = { 0 };
-        fft->thdg_i = calcTHDG(Mags, fgroups, 17);
+        fft->thdg_i = calcTHDG(Mags, fgroups, Mags, 17);
         fft->thdsg_i = calcTHDSG(Mags, fgroups, 17);
       }
       if (currPage == 5)
@@ -229,43 +327,148 @@ void loop() {
       startSamplingFFT();
     }
   }
+  /*
   //Update Display with a fixed timing only
   if (newTime > displayTime + DISPLAY_UPD_RATE && !sampling) {
-
     //Display Update if calculation of FFT was stopped and no computer is connected to avoid
     //Conflicts in SPI reading
-    if (!calcFFT && !computerConnected) {
-      //For Live Voltage detection
-      float voltrms = calcVRMS();
-      updateDisplay();
+    if (computerConnected) {
+      #ifdef INIT_DISP
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      printTime();
+      display.display();
+      #endif
+      #ifdef DEBUG
+      SerialUSB1.println("Computer Connected, printTime");
+      #endif
+    } else if (!calcFFT) {
+      SerialUSB1.printf("updating display, currPage: %u,  %u\n", currPage);
+      updateDisplay(); //FIXME uncomment
+      SerialUSB1.printf("Icode: %u \n", ACSchip.readReg(0x2A));
+      SerialUSB1.printf("Vcode: %u \n", ACSchip.readReg(0x2B));
       //Voltage detection, only if no voltage was detected
+      #ifdef DETECT_VOLTAGE
+      float voltrms = ACSchip.readVRMS(1);
       if (!voltage_detected && voltrms > 100) {
         //Start sampling FFT (default mode)
         voltage_detected = true;
         startSamplingFFT();
         calcFFT = true;
       }
-    } else {
-      //For Live Voltage detection
-      float voltrms = calcVRMS();
-      //If plug has been pulled out of the socket (no voltage)
-      if (voltage_detected && voltrms <= 100) {
-        updateDisplay();
-        voltage_detected = false;
-        calcFFT = false;
-        stopSampling();
-      }
+      #endif
     }
+    #ifdef DETECT_VOLTAGE
+    detectVoltage();
+    #endif
     displayTime = newTime;
+  }
+  */
+  if (updateDisplay_flag == true) {
+    SerialUSB1.printf("updating display, currPage: %u\n", currPage);
+    updateDisplay();
+    noInterrupts();
+    updateDisplay_flag = false;
+    interrupts();
   }
   //Check for Serial input
   getCommand();
-
-  if (newTime > checkTime + wdTimeout - 5000) {
+  //Feed the Watchdog. Woof
+  /*if (newTime > checkTime + wdTimeout - 5000) {
     wdt.feed();
+    #ifdef DEBUG
+    SerialUSB1.println("Fed the dawg");
+    #endif
     checkTime = newTime;
+  }*/
+
+  if (touchHappened == true) {
+    touchHandler();
+    noInterrupts();
+    touchHappened = false;
+    interrupts();
+
   }
 }
+bool displaytest = true;
+/*
+  Updates the Display with values
+*/
+void updateDisplay() {
+  #ifdef INIT_DISP
+  //Updates to the display
+  float temp;
+  display.clearDisplay();
+  display.setCursor(0, 0); //Cursor Position top-left
+  if (!voltage_detected && !displaytest) {
+    display.printf("Voltage \ntoo low:\n%2f", ACSchip.readVRMS(1));
+  } else {
+    if (now() < 1357041600) //Now() is less that year 2013
+      display.printf("No Time\n");
+    //else
+    //  printTime();
+    if (currPage == 0) {
+      display.printf("RMS values");
+      temp = ACSchip.readVRMS(1);
+      if (temp < 1)
+        display.printf("Vrms: \n%.2f mV\n", temp * 1000.0);
+      else
+        display.printf("Vrms: \n%.2f V\n", temp);
+      temp = ACSchip.readIRMS(1);
+      if (temp < 1)
+        display.printf("Irms: \n%.2f mA\n", temp * 1000.0);
+      else
+        display.printf("Irms: \n%.2f A\n", temp);
+      //measureFrequency();
+      display.printf("Frequency: \n%.2f Hz\n", 50.0/*fft->pwr_f*/);
+    } else if (currPage == 1) {
+      /*
+      display.printf("Harm. Dist. (V)\n");
+      display.printf("THD: %.2f %%\n", fft->thd_v);
+      if (fft->grouping_en) {
+        display.printf("THDG: %.2f\n", fft->thdg_v);
+        display.printf("THDSG: %.2f\n", fft->thdsg_v);
+      }*/
+    } else if (currPage == 2) {
+      /*display.printf("Harm. Dist. (I)\n");
+      display.printf("THD: \n%.2f %%\n", fft->thd_i);
+      if (fft->grouping_en) {
+        display.printf("THDG: \n%.2f\n", fft->thdg_i);
+        display.printf("THDSG: \n%.2f\n", fft->thdsg_i);
+      }*/
+    } else if (currPage == 3) {
+
+      //SerialUSB1.println("Trying Power");
+      //display.printf("Act. Power \n%.2f W\n", ACSchip.readPACTIVE(1) * MAXPOWER);
+      //SerialUSB1.println("Trying Power");
+      //display.printf("P-Factor: \n%.2f\n", ACSchip.readPOWERFACTOR() /* fft->distortion_factor*/);
+      //SerialUSB1.println("Trying Power");
+      //display.printf("Phase Angle\n: %.2fdeg\n", fft->phaseangle);
+      //SerialUSB1.println("Finish power");
+
+    }
+  }
+  display.display();
+  #endif
+}
+
+void displayFFT() {
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  if (currPage == 4)
+    display.print("Voltage FFT 0-640 Hz");
+  else
+    display.print("Current-FFT 0-640 Hz");
+  //Number of Magnitudes: 4096, with binSize = 5
+  float maxMag = Mags[getMaxValueIndex(Mags, 4096)];
+  float pix_per_volt = (DISP_HEIGHT - 20) / maxMag;
+  for (int i = 0; i < DISP_WIDTH; i++) {
+    uint16_t mag = round(Mags[i] * pix_per_volt); //Rounded value
+    display.drawLine(i, DISP_HEIGHT, i, DISP_HEIGHT - 10 - mag, SSD1327_WHITE);
+  }
+  display.display();
+}
+
 
 void getCommand() {
   if (Serial.available() > 0) {
@@ -281,16 +484,13 @@ void getCommand() {
     {
       if (c2 == RMS) //RMS Voltage
       {
-        vol_mem->v_rms = ACS_VRMS;
-        Serial.printf("%u\n", vol_mem->v_rms);
+        Serial.printf("%u\n", ACSchip.readVRMS_RAW(0));
       } else if (c2 == PER_SECOND) //RMS Voltage per second
       {
-        vol_mem->vrms_sec = ACSchip.readReg(0x26) & 0x7FFF; //15-bit FP, 15 frac
-        Serial.printf("%u\n", vol_mem->vrms_sec);           //("%f\n", ConvertUnsignedFixedPoint(vrms_sec, 15, 15)*RATED_VOLTAGE);
+        Serial.printf("%u\n", ACSchip.readVRMS_RAW(1));           //("%f\n", ConvertUnsignedFixedPoint(vrms_sec, 15, 15)*RATED_VOLTAGE);
       } else if (c2 == PER_MINUTE) //RMS Voltage per minute
       {
-        vol_mem->vrms_min = ACSchip.readReg(0x27) & 0x7FFF; //15-bit FP, 15 frac
-        Serial.printf("%u\n", vol_mem->vrms_min);           //("%f\n", ConvertUnsignedFixedPoint(vrms_min, 15, 15)*RATED_VOLTAGE);
+        Serial.printf("%u\n", ACSchip.readVRMS_RAW(2));           //("%f\n", ConvertUnsignedFixedPoint(vrms_min, 15, 15)*RATED_VOLTAGE);
       } else if (c2 == PC_SAMPLING) //Start Voltage Sampling
       {
         connectComputer(true);
@@ -298,62 +498,50 @@ void getCommand() {
         runmode = 1;
       } else if (c2 == SINGLE_VALUE) //Single Voltage Value
       {
-        vol_mem->vcodes = ACS_VCODE;
-        Serial.printf("%u\n", vol_mem->vcodes);
+        Serial.printf("%u\n", ACSchip.readVCODE_RAW());
       }
     } else if (c1 == CURRENT) //**************************Current*****************************
     {                   //All current related measurements
       if (c2 == RMS)    //RMS Current
       {
-        vol_mem->i_rms = ACS_IRMS;
-        Serial.printf("%u\n", vol_mem->i_rms);
+        Serial.printf("%u\n", ACSchip.readIRMS_RAW(0));
       } else if (c2 == PER_SECOND) //RMS Current per second
       {
-        vol_mem->irms_sec = (ACSchip.readReg(0x26) >> 16) & 0x7FFF; //15-bit FP, 14 frac
-        Serial.printf("%u\n", vol_mem->irms_sec);
+        Serial.printf("%u\n", ACSchip.readIRMS_RAW(1));
       } else if (c2 == PER_MINUTE) //RMS Current per minute
       {
-        vol_mem->irms_min = (ACSchip.readReg(0x27) >> 16) & 0x7FFF; //15-bit FP, 14 frac
-        Serial.printf("%u\n", vol_mem->irms_min);
+        Serial.printf("%u\n", ACSchip.readIRMS_RAW(2));
       } else if (c2 == PC_SAMPLING) //Start Current Sampling
       {
         startSamplingPC();
         runmode = 2;
       } else if (c2 == SINGLE_VALUE) //Single Current Value
       {
-        vol_mem->icodes = ACS_ICODE;
-        Serial.printf("%u\n", vol_mem->icodes);
+        Serial.printf("%u\n", ACSchip.readICODE_RAW());
       }
     } else if (c1 == POWER) //**************************Power*****************************
     {                   //All power related measurements
       if (c2 == ACTIVE_POWER)    //Active Power Value
       {
-        vol_mem->pActive = ACS_PACTIVE;
-        Serial.printf("%u\n", vol_mem->pActive);
+        Serial.printf("%u\n", ACSchip.readPACTIVE_RAW(0));
       } else if (c2 == PER_SECOND) //Active Power per second
       {
-        vol_mem->pact_sec = ACSchip.readReg(0x28) & 0x1FFFF; //17-bit FP, 15 frac
-        Serial.printf("%u\n", vol_mem->pact_sec);
+        Serial.printf("%u\n", ACSchip.readPACTIVE_RAW(2));
       } else if (c2 == PER_MINUTE) //Active Power per minute
       {
-        vol_mem->pact_min = ACSchip.readReg(0x29) & 0x1FFFF; //17-bit FP, 15 frac
-        Serial.printf("%u\n", vol_mem->pact_min);
+        Serial.printf("%u\n", ACSchip.readPACTIVE_RAW(2));
       } else if (c2 == APPARENT_POWER) //Apparent Power
       {
-        vol_mem->pApp = ACS_PAPPARENT;
-        Serial.printf("%u\n", vol_mem->pApp);
+        Serial.printf("%u\n", ACSchip.readPAPP_RAW());
       } else if (c2 == REACTIVE_POWER) //Reactive Power
       {
-        vol_mem->pImag = ACS_PIMAG;
-        Serial.printf("%u\n", vol_mem->pImag);
+        Serial.printf("%u\n", ACSchip.readPIMAG_RAW());
       } else if (c2 == POWER_FACTOR) //Power Factor
       {
-        vol_mem->pfact = ACS_PF;
-        Serial.printf("%u\n", vol_mem->pfact);
+        Serial.printf("%u\n", ACSchip.readPOWERFACTOR_RAW());
       } else if (c2 == INSTANT_POWER) //Instant Power Value
       {
-        vol_mem->pinst = ACS_PINST;
-        Serial.printf("%u\n", vol_mem->pinst);
+        Serial.printf("%u\n", ACSchip.readPINST_RAW());
       } else if (c2 == PC_SAMPLING) //Power codes
       {
         powerSampling = true;
@@ -447,13 +635,6 @@ void getCommand() {
       } else if (c2 == SD_READ) //SD-Read-mode
       {
         SerialUSB1.println("Printing SD Directory");
-        root = SD.open("/");
-        File f = root;
-        while (!f) {
-          if (f.isDirectory())
-            printDirectory(f, 0);
-        }
-        f = f.openNextFile();
       }
     }
   }
@@ -463,32 +644,20 @@ void getCommand() {
 int detectCurrentZC(uint8_t orient) {
   if (orient == 1) //Positive peak detected -> Detect Negative Slope
   {
-    float currdata = readICodes();
+    float currdata = ACSchip.readICODE();
     while (currdata > -zcd_thresh) {
-      currdata = readICodes();
+      currdata = ACSchip.readICODE();
     }
     return 0; //return a negative slope detection
   }
   if (orient == 0) { //Negative peak detected: Detect positive Slope
-    float currdata = readICodes();
+    float currdata = ACSchip.readICODE();
     while (currdata < zcd_thresh) {
-      currdata = readICodes();
+      currdata = ACSchip.readICODE();
     }
     return 1;
   }
-}
-
-uint32_t getMaxValueIndex(float values[], uint32_t arrlen) {
-  uint32_t maxIndex = 0;
-  float maxVal = values[maxIndex];
-
-  for (uint32_t i = 0; i < arrlen; i++) {
-    if (values[i] > maxVal) {
-      maxIndex = i;
-      maxVal = values[i];
-    }
-  }
-  return maxIndex;
+  return 0;
 }
 
 /*
@@ -500,15 +669,16 @@ uint32_t getMaxValueIndex(float values[], uint32_t arrlen) {
         pos in decimal-form (Position of LSB of Value)
 */
 void readSingleEEPROM() {
-  receiveCommandString();
+  receiveCommandString(&Serial, command->commandBuffer);
   char *endPointer;
-  uint32_t adr = strtoul(receivedChars, &endPointer, 16);
-  uint32_t mask = strtoul(endPointer, &endPointer, 16);
-  uint8_t pos = strtoul(endPointer, NULL, 10);
+  command->address = strtoul(command->commandBuffer, &endPointer, 16);
+  command->mask = strtoul(endPointer, &endPointer, 16);
+  command->mask = strtoul(endPointer, NULL, 10);
 
-  uint32_t data = ACSchip.readEEPROM(adr, mask, pos);
+  uint32_t data = ACSchip.readEEPROM(command->address, command->mask, command->pos);
   #ifdef DEBUG
-  SerialUSB1.printf("Reading Adr %u, Mask %u, on pos %u\n Data: %u\n", adr, mask, pos, data);
+  SerialUSB1.printf("Reading Adr %u, Mask %u, on pos %u\n Data: %u\n",
+                    command->address, command->mask, command->pos, data);
   #endif
   Serial.printf("%u\n", data);
   Serial.send_now(); //Sends instantly to avoid buffering
@@ -528,10 +698,10 @@ void readSingleEEPROM() {
 */
 void MCU_write(uint32_t adr, uint32_t val, bool read) {
   if (read) {
-    receiveCommandString();
+    receiveCommandString(&Serial, command->commandBuffer);
 
     char *endPointer;
-    adr = strtoul(receivedChars, &endPointer, 10);
+    adr = strtoul(command->commandBuffer, &endPointer, 10);
     val = strtoul(endPointer, NULL, 10);
   }
   if (adr <= 1079 && adr >= 0) {
@@ -561,8 +731,8 @@ void MCU_write(uint32_t adr, uint32_t val, bool read) {
 */
 uint32_t MCU_read(uint32_t adr, bool read) {
   if (read) {
-    receiveCommandString();
-    adr = strtoul(receivedChars, NULL, 10);
+    receiveCommandString(&Serial, command->commandBuffer);
+    adr = strtoul(command->commandBuffer, NULL, 10);
   }
   if (adr > 1079 || adr < 0) {
     SerialUSB1.println("Address must be between 0 and 1079");
@@ -581,8 +751,8 @@ uint32_t MCU_read(uint32_t adr, bool read) {
 }
 
 void readAddress() {
-  receiveCommandString();
-  uint32_t adr = strtoul(receivedChars, NULL, 16);
+  receiveCommandString(&Serial, command->commandBuffer);
+  uint32_t adr = strtoul(command->commandBuffer, NULL, 16);
 
   uint32_t data = ACSchip.readReg(adr);
   #ifdef DEBUG
@@ -593,9 +763,9 @@ void readAddress() {
 }
 
 void writeAddress() {
-  receiveCommandString();
+  receiveCommandString(&Serial, command->commandBuffer);
   char *endPointer;
-  uint32_t adr = strtoul(receivedChars, &endPointer, 16);
+  uint32_t adr = strtoul(command->commandBuffer, &endPointer, 16);
   uint32_t value = strtoul(endPointer, NULL, 10);
   #ifdef DEBUG
   SerialUSB1.printf("Writing %u to address %u\n", value, adr);
@@ -626,7 +796,7 @@ void measureFrequency() {
   }
   secTime = micros(); //Save the time of the second rising edge
   float ti = secTime - firstTime;
-  fft->pwr_f = 1 / (ti / 1000000); //Convert time to seconds and calculate Frequency
+  fft->pwr_f = 1 / (ti / 1000000.0); //Convert time to seconds and calculate Frequency
 }
 
 /*
@@ -634,10 +804,10 @@ void measureFrequency() {
   wc<calibration_factor exp_rms voltage(0)/current_mode(1)>
 */
 void calibrateRMS() {
-  receiveCommandString();
+  receiveCommandString(&Serial, command->commandBuffer);
   char *endPointer;
   //Conversion Factor
-  uint32_t conv = strtoul(receivedChars, &endPointer, 10);
+  uint32_t conv = strtoul(command->commandBuffer, &endPointer, 10);
   //Mode either 0 or 1
   uint8_t mode = (uint8_t)strtoul(endPointer, NULL, 10);
 
@@ -647,10 +817,10 @@ void calibrateRMS() {
   #endif
 
   if (mode == 0) {
-    conv_factor_VRMS = converted;
+    ACSchip.setConversionFactors(converted, -1);
     MCU_write(VRMS_cal_address, conv, false);
   } else {
-    conv_factor_IRMS = converted;
+    ACSchip.setConversionFactors(-1, converted);
     MCU_write(IRMS_cal_address, conv, false);
   }
 
@@ -658,37 +828,6 @@ void calibrateRMS() {
   Serial.send_now();
 }
 
-/*
-  Receives a command String with chosen delimiters. Can read up to MAX_RECEIVABLE chars
-*/
-void receiveCommandString() {
-  char stdel = '<';              //Start delimiter
-  char enddel = '>';             //End delimiter
-  bool receiving = false;        //Receiving flag
-  uint8_t cntr = 0;              //Char counter
-  while (Serial.available() > 0) //Receive while characters are on the Serial Bus / Buffer
-  {
-    char rc = Serial.read();
-
-    if (receiving) //If receiving of values has started
-    {
-      if (rc != enddel) {
-        receivedChars[cntr] = rc;
-        cntr++;
-        if (cntr > MAX_RECEIVEABLE)
-          cntr = MAX_RECEIVEABLE - 1;
-      } else //If end delimiter was sent
-      {
-        receivedChars[cntr] = '\0'; //String end delimiter
-        receiving = false;          //Stop receiving and
-        cntr = 0;                   //Reset counter
-      }
-    } else {
-      if (rc == stdel) //Starting delimiter has been sent
-        receiving = true;
-    }
-  }
-}
 /*
   Writes a value to the EEPROM
   Reads an incoming data String and converts each value
@@ -700,21 +839,18 @@ void receiveCommandString() {
     Pos: decimal (Position of LSB of value)
 */
 void writeEEPROMValue() {
-  receiveCommandString(); //Read incoming data
-  uint32_t address = 0;
-  int32_t value = 0; //Can be signed
-  uint32_t mask = 0;
-  uint8_t pos = 0;
+  receiveCommandString(&Serial, command->commandBuffer); //Read incoming data
   char *endPointer;
 
-  address = strtoul(receivedChars, &endPointer, 16);
-  value = strtol(endPointer, &endPointer, 10);
-  mask = strtoul(endPointer, &endPointer, 16);
-  pos = strtol(endPointer, NULL, 10);
+  command->address = strtoul(command->commandBuffer, &endPointer, 16);
+  command->value = strtol(endPointer, &endPointer, 10);
+  command->mask = strtoul(endPointer, &endPointer, 16);
+  command->pos = strtol(endPointer, NULL, 10);
   #ifdef DEBUG
-  SerialUSB1.printf("Writing Value %u to adr %u with mask %u on pos %u\n", value, address, mask, pos);
+  SerialUSB1.printf("Writing Value %u to adr %u with mask %u on pos %u\n",
+                command->value, command->address, command->mask, command->pos);
   #endif
-  ACSchip.writeEEPROM(address, value, mask, pos);
+  ACSchip.writeEEPROM(command->address, command->value, command->mask, command->pos);
 }
 
 // Start FFT Sampling for Teensy calculation
@@ -729,6 +865,7 @@ void startSamplingFFT() {
   while (zcd != 1)
     zcd = ACSchip.readReg(0x2D) & 0x1;
   bool err = smplTimer.begin(getSamples_FFT, FFTSAMPLERATE);
+  smplTimer.priority(48);
   if (!err)
     SerialUSB1.println("Error starting Timer");
 }
@@ -745,6 +882,7 @@ void startSamplingPC() {
       zcd = ACSchip.readReg(0x2D) & 0x1;
   }
   bool err = smplTimer.begin(getSamplesPC, SAMPLERATE);
+  smplTimer.priority(48);
   if (!err)
     SerialUSB1.println("Error starting Timer");
 
@@ -758,11 +896,11 @@ void getSamplesPC() {
   //Read Icodes and Vcodes as close as possible to each other
   //Adding power sampling
   if (powerSampling)
-    vCodeBuffer[sampleCntr] = ACS_PACTIVE;
+    vCodeBuffer[sampleCntr] = ACSchip.readPACTIVE_RAW(0);
   else
-    vCodeBuffer[sampleCntr] = ACS_VCODE;
+    vCodeBuffer[sampleCntr] = ACSchip.readVCODE_RAW();
 
-  iCodeBuffer[sampleCntr] = ACS_ICODE;
+  iCodeBuffer[sampleCntr] = ACSchip.readICODE_RAW();
   sampleCntr++;
   if (sampleCntr > SAMPBUFFLEN - 1) //If sampleBuffer is filled up
   {
@@ -776,20 +914,20 @@ void getSamplesPC() {
 void startStreamingPC() {
   sampling = true;
   stopSampling();
-  receiveCommandString();
-  char *endPointer;
+  receiveCommandString(&Serial, command->commandBuffer);
 
-  float streamTime = strtof(receivedChars, &endPointer);
+  float streamTime = strtof(command->commandBuffer, NULL);
   SerialUSB1.printf("Stream time delay: %f\n", streamTime);
   bool err = smplTimer.begin(streamSampling, streamTime); //Maximum
+  smplTimer.priority(48);
   if (!err)
     SerialUSB1.println("Error starting Stream Timer");
 }
 
 // Sampling for Teensy-FFT Calculation
 void getSamples_FFT() {
-  vol_mem->vcodes = ACS_VCODE;
-  vol_mem->icodes = ACS_ICODE;
+  ACSchip.readVCODE_RAW();
+  ACSchip.readICODE_RAW();
   vSamps[sampleCntr] = ConvertSignedFixedPoint(vol_mem->vcodes, 16, 17) * 366.94;
   iSamps[sampleCntr] = ConvertSignedFixedPoint(vol_mem->icodes, 15, 17) * 15;
   vSamps[sampleCntr + 1] = 0.0;
@@ -811,8 +949,8 @@ void getSamples_FFT() {
 Stream vcodes and icodes to Serial. Helper
 */
 void streamSampling() {
-  vol_mem->vcodes = ACS_VCODE;
-  vol_mem->icodes = ACS_ICODE;
+  ACSchip.readVCODE_RAW();
+  ACSchip.readICODE_RAW();
   Serial.printf("%u,%u\n", vol_mem->vcodes, vol_mem->icodes);
 }
 /*
@@ -822,32 +960,31 @@ void stopSampling() {
   smplTimer.end();
 }
 
-void printDirectory(File dir, int numTabs) {
-  while (true) {
-    File entry = dir.openNextFile();
-    if (!entry) {
-      if (numTabs == 0)
-        SerialUSB1.println("** Done **");
-      return;
-    }
-    for (uint8_t i = 0; i < numTabs; i++)
-      SerialUSB1.print('\t');
-    SerialUSB1.print(entry.name());
-    if (entry.isDirectory()) {
-      SerialUSB1.println("/");
-      printDirectory(entry, numTabs + 1);
-    } else {
-      Serial.print("\t\t");
-      Serial.println(entry.size(), DEC);
-    }
-    entry.close();
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Helper Functions
 ////////////////////////////////////////////////////////////////////////////////
 
+
+/* prints the current time on the display
+
+*/
+
+void printTime() {
+  display.printf("%02d:%02d:%02d\n", hour(), minute(), second());
+}
+/*
+  Detect Voltage
+*/
+void detectVoltage() {
+  //For Live Voltage detection
+  float voltrms = ACSchip.readVRMS(1);
+  //If plug has been pulled out of the socket (no voltage)
+  if (voltrms <= 100) {
+    voltage_detected = false;
+    calcFFT = false;
+    stopSampling();
+  }
+}
 /*
   Set the computerConnected Flag and displays a message
 
@@ -890,18 +1027,12 @@ void toCalibrationMode() {
   updateDisplay();
 }
 
-
-
-float readICodes() {
-  return ConvertSignedFixedPoint(ACS_ICODE, 15, 17) * 15;
-}
-
 //Time synchro
 void timeSync() {
   unsigned long pctime;
   const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013
-  receiveCommandString();                        //Receive Command
-  pctime = strtol(receivedChars, NULL, 10);      //Read Time Value
+  receiveCommandString(&Serial, command->commandBuffer);                        //Receive Command
+  pctime = strtol(command->commandBuffer, NULL, 10);      //Read Time Value
   SerialUSB1.print("Time received: ");
   SerialUSB1.print(pctime);
   SerialUSB1.println();
@@ -922,178 +1053,18 @@ void print_time_in_min_sec(uint32_t ms) {
     display.setCursor(5, 10);
     display.printf("Calibration Mode\n");
     display.printf("%u s remaining", secs);
-    display.display();
   } else {
     int mins = (int)(ms / 60000);
     display.clearDisplay();
     display.setCursor(5, 10);
     display.printf("Calibration Mode\n");
     display.printf("%u min remaining", mins);
-    display.display();
   }
+  display.display();
 }
 void sendCalibration() {
   uint32_t tmp = MCU_read(VRMS_cal_address, false);
   Serial.printf("VRMS,%u\n", tmp);
   tmp = MCU_read(IRMS_cal_address, false);
   Serial.printf("IRMS,%u\n", tmp);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Calculation Functions
-////////////////////////////////////////////////////////////////////////////////
-
-float calcVRMS() {
-  vol_mem->v_rms = ACS_VRMS;
-  //uint32_t calib_Code = 21280;              //Calibration Factor
-  //conv_factor_VRMS = exp_VRMS / calFactor_VRMS; //Actual Sensitivity
-
-  float vrms_rsense = vol_mem->v_rms * conv_factor_VRMS;      //Voltage over RS1
-  float vrms_input = vrms_rsense * (4003000 / 3000); //Voltage at output
-  return vrms_input;
-}
-float calcIRMS() {
-  vol_mem->i_rms = ACS_IRMS;
-  //uint32_t i_calib_Code = 257;
-  //float conv_factor = exp_IRMS / calFactor_IRMS; //Calibration from Lightbulb
-  float irms = vol_mem->i_rms * conv_factor_IRMS; //conv_factor;
-  return irms;
-}
-
-float calcTHD(uint8_t order) {
-  uint32_t s = 50 / binSize; //50Hz base frequency
-  float thd = 0;
-  float base = Mags[s];
-  for (uint32_t i = s * 2; i < order * s; i += s) {
-    thd += pow(Mags[i] / base, 2);
-  }
-  thd = sqrt(thd) * 100;
-
-  return thd;
-}
-
-float calcTHDG(float frequencies[], float output[], int order) {
-  float groupvalue = 0;
-  for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
-  {
-    groupvalue = pow(frequencies[i * 10 - 5], 2) / 2; //Add 1/2*Value offset by 5 to the left
-    float sumvalue = 0;
-    for (int k = -4; k < 5; k++) //Add all values from -4 to 4 around the harmonic order
-    {
-      sumvalue += pow(frequencies[i * 10 + k], 2);
-    }
-    groupvalue += sumvalue + pow(Mags[i * 10 + 5], 2) / 2; //Add 1/2*Value offset by 5 to the right
-    float result = sqrt(groupvalue);
-    output[i] = result; //Save it in output array
-  }
-  //Calculate THDG
-  float thdg = 0;
-  float base = output[1];
-  for (uint8_t i = 2; i <= order; i++) {
-    thdg += pow(output[i] / base, 2);
-  }
-  thdg = sqrt(thdg) * 100;
-  return thdg;
-}
-float calcTHDSG(float frequencies[], float output[], int order) {
-  for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
-  {
-    float sumvalue = 0;
-    for (int k = -1; k < 2; k++) //Add neighbor values
-    {
-      sumvalue += pow(frequencies[i * 10 + k], 2);
-    }
-    float result = sqrt(sumvalue);
-    output[i] = result;
-  }
-  //Calculate THDSG
-  float thdsg = 0;
-  float base = output[1];
-  for (uint8_t i = 2; i <= order; i++) {
-    thdsg += pow(output[i] / base, 2);
-  }
-  thdsg = sqrt(thdsg) * 100;
-  return thdsg;
-}
-
-/*
-  Updates the Display with values
-*/
-void updateDisplay() {
-  if (currPage == 4 || currPage == 5) {
-  } else {
-    float temp = calcVRMS();
-    //Updates to the display
-    display.clearDisplay();
-    display.setCursor(0, 0); //Cursor Position top-left
-    if (voltage_detected) {
-      measureFrequency();
-      if (now() < 1357041600) //Now() is less that year 2013
-        display.printf("Zeit: no sync\n");
-      else
-        display.printf("Zeit: %02d:%02d:%02d\n", hour(), minute(), second());
-      display.printf("THD (V): %.2f %%\n", fft->thd_v);
-      if (fft->grouping_en) {
-        display.printf("THDG: %.2f\n", fft->thdg_v);
-        display.printf("THDSG: %.2f\n", fft->thdsg_v);
-      }
-      display.printf("THD (I): %.2f %%\n", fft->thd_i);
-      if (fft->grouping_en) {
-        display.printf("THDG: %.2f\n", fft->thdg_i);
-        display.printf("THDSG: %.2f\n", fft->thdsg_i);
-      }
-      display.printf("Freq: %.2f Hz\n", fft->pwr_f);
-      if (temp < 1)
-        display.printf("Vrms: %.2f mV\n", temp * 1000.0);
-      else
-        display.printf("Vrms: %.2f V\n", temp);
-      temp = calcIRMS();
-      if (temp < 1)
-        display.printf("Irms: %.2f mA\n", temp * 1000.0);
-      else
-        display.printf("Irms: %.2f A\n", temp);
-      //pActive = ACS_PACTIVE;
-      //display.printf("Power %.2f W\n", ConvertSignedFixedPoint(pActive, 15, 17) * MAXPOWER);
-      vol_mem->pact_sec = ACSchip.readReg(0x28) & 0x1FFFF; //17-bit FP, 15 frac
-      display.printf("Power %.2f W\n", ConvertSignedFixedPoint(vol_mem->pact_sec, 15, 17) * MAXPOWER);
-      vol_mem->pfact = ACS_PF;
-      temp = ConvertSignedFixedPoint(vol_mem->pfact, 9, 11);
-      temp = temp * fft->distortion_factor;
-      display.printf("P-Factor: %.2f\n", temp);
-      //float ang = acos(temp) * (180 / PI);
-      display.printf("Winkel: %.2fdeg\n", fft->phaseangle);
-    } else {
-      display.printf("Voltage too low:\n %2f", temp);
-    }
-    display.display();
-  }
-}
-
-void displayFFT() {
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  if (currPage == 4)
-    display.print("Voltage FFT 0-640 Hz");
-  else
-    display.print("Current-FFT 0-640 Hz");
-  //Number of Magnitudes: 4096, with binSize = 5
-  float maxMag = Mags[getMaxValueIndex(Mags, 4096)];
-  float pix_per_volt = (DISP_HEIGHT - 20) / maxMag;
-  for (int i = 0; i < DISP_WIDTH; i++) {
-    uint16_t mag = round(Mags[i] * pix_per_volt); //Rounded value
-    display.drawLine(i, DISP_HEIGHT, i, DISP_HEIGHT - 10 - mag, SSD1327_WHITE);
-  }
-  display.display();
-}
-
-void pageNext() {
-  if (currPage < NO_OF_PAGES - 1)
-    currPage++;
-  SerialUSB1.printf("NEXT! -> Page Nr: %d\n", currPage);
-}
-
-void pageBack() {
-  if (currPage > 0)
-    currPage--;
-  SerialUSB1.printf("PREV! -> Page Nr: %d\n", currPage);
 }

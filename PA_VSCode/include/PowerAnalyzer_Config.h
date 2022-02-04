@@ -1,11 +1,11 @@
+#ifndef POWERANALYZER_CONFIG_H
+#define POWERANALYZER_CONFIG_H
+
 #include <Arduino.h>
 
-
 //Touch-Inputs:
-#define TOUCH_PREV 2
-#define TOUCH_NEXT 3
 
-#define NO_OF_PAGES 6 //Number of pages
+const uint8_t NO_OF_PAGES = 6; //Number of pages
 
 
 //Defines for ACS71020 Chip
@@ -19,9 +19,11 @@
 
 
 //Defines for Display SSD1327
-#define OLED_RST 14 //20
-#define OLED_DC 15  //21
-#define OLED_CS 16  //22
+const uint8_t OLED_RST = 14; //20
+const uint8_t OLED_DC = 15;  //
+//const uint8_t OLED_CS = 16;  //22
+
+#define OLED_ADDRESS 0x7a //if DC low: 0x78
 
 //Display Measurements
 #define DISP_WIDTH 128
@@ -30,8 +32,10 @@
 
 
 //Defines for the SD-Card
-#define SD_CS_PIN 9
+const uint8_t SD_CS_PIN = 2;
 
+#define CAP1293_ADDRESS 0x50 //0101_000
+const uint8_t CAP1293_IRQ = 16;  //Active Low interrupt pin. Trigger on falling edge
 
 //Frequency and FFT Defines
 #define FFTSAMPLEFREQ 20408
@@ -46,10 +50,10 @@
 
 //ARM_MATH FFT PARAMETERS
 #define ifftFlag 0
-arm_cfft_radix4_instance_f32 fftInstance;
 
 //Characteristics
 #define MAXVOLT 366               //Voltage divider at Input
 #define MAXCURR 15                //Fixed for 5V SPI Version of the chip
 #define MAXPOWER MAXVOLT *MAXCURR //For Power Calculations
 
+#endif
