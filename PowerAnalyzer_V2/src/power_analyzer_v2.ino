@@ -1,7 +1,7 @@
 /*
 Teensy 4.0 Firmware for a Power Analyzer
 Author: Sebastian Zisch
-Date: 210417
+Date: 220320
 
 MIT License
 
