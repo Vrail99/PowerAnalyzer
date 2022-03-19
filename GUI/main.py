@@ -27,6 +27,8 @@ import serial_device
 import tkinter as tk
 from tkinter import ttk
 import time
+import sys
+import os
 
 # Own modules
 from settingsPage import SettingsPage
@@ -52,7 +54,7 @@ class mainWindow(tk.Tk):
     """tkinter.Tk() backend"""
 
     def __init__(self, pages: list, *args, **kwargs) -> None:
-        """Initializes 
+        """Initializes
             - the serial bus,
             - individual pages as classes,
             - the menu
@@ -131,7 +133,7 @@ class mainWindow(tk.Tk):
 
         # BottomBar with Statuslabel
         self.l_status = ttk.Label(
-            status_buttons, style="TLabel", text="Not connected", width=35)
+            status_buttons, style="TLabel", text="Not connected", width=25)
         self.connbtn = ttk.Button(
             status_buttons, style="TButton", text="Connect", command=lambda: self._openSerial())
         self.disconnbtn = ttk.Button(
@@ -274,14 +276,11 @@ class mainWindow(tk.Tk):
             # Get conversion factors
             try:
                 self.sBus.writeString('es')
-                tmp = str(self.sBus.readLine()).split(',')
-                v_conv_factor = 0
-                i_conv_factor = 0
-                if (tmp[0] == "VRMS"):
-                    v_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[1]), 23, 24)
-                tmp = str(self.sBus.readLine()).split(',')
-                if (tmp[0] == "IRMS"):
-                    i_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[1]), 23, 24)
+                tmp = self.sBus.readLine().split(',')
+                print("Got ConversionFactors:", tmp)
+                v_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[0]), 23, 24)
+                i_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[1]), 23, 24)
+
                 self.pages[LivePage].setConversionFactors(v_conv_factor, i_conv_factor)
             except TypeError as e:
                 print(e)
@@ -307,7 +306,7 @@ class mainWindow(tk.Tk):
         self.scopeWindow.destroy()
 
     def _closeSerial(self) -> None:
-        """Closes the serial connection, flushes the bus and 
+        """Closes the serial connection, flushes the bus and
         disables GUI Elements which use this connection"""
         self.sBus.flushBus()
         self.sBus.closePort()
@@ -347,7 +346,7 @@ class mainWindow(tk.Tk):
     def _show_frame(self, frame: tk.Frame) -> None:
         """Raises the frame on top of all others
 
-            Keyword Arguments: 
+            Keyword Arguments:
 
             frame -- tk.Frame Object to be raised on top"""
         t = self.pages[frame]
@@ -397,6 +396,7 @@ class mainWindow(tk.Tk):
 
 if __name__ == '__main__':
     p = [MainPage, LivePage, SettingsPage]
+    os.chdir(os.path.dirname(__file__))
     app = mainWindow(p)
     app.protocol("WM_DELETE_WINDOW", app.endProgram)
     app.mainloop()

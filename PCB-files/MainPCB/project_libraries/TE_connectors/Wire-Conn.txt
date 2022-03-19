@@ -1,0 +1,4 @@
+Connector for Wire:
+Digikey SKU: A128970-ND
+
+https://www.te.com/commerce/DocumentDelivery/DDEController?Action=srchrtrv&DocNm=440129&DocType=Customer+Drawing&DocLang=English

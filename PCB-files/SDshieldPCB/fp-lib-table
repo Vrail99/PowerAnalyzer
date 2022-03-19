@@ -1,0 +1,5 @@
+(fp_lib_table
+  (lib (name "footprints")(type "KiCad")(uri "${KIPRJMOD}/libs/NXP_74LVC125APW/footprints.pretty")(options "")(descr ""))
+  (lib (name "NXP_74LVC125APW")(type "KiCad")(uri "${KIPRJMOD}/libs/NXP_74LVC125APW/NXP_74LVC125APW.pretty")(options "")(descr ""))
+  (lib (name "IES_Logo")(type "KiCad")(uri "/Users/macbook/Dropbox/TU-Darmstadt/HiWi Job/IES_Logo.pretty")(options "")(descr ""))
+)

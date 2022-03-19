@@ -1,0 +1,15 @@
+############## 20.03.2022 ###############
+
+- Power Analyzer V2 main commit
+Known issues: 
+- Touch-IC doesn't reset properly (maybe because of signal guard),
+  which leads to a double touch when changing directions
+- frequency measurements somehow don't work anymore, could be because of the longer delay due to 
+  enables.
+- The RMS measurements sometimes jump to the max value that can be measured by the configuration.
+  Probably because of the RMS calculation done in the chip.
+
+ToDo:
+- DataLogger is prepared, but not yet implemented. Data acquision for long-term measurements has 
+  to be timed correctly and a configuration interface for the GUI is open.
+- move data readout in a separate function. Better interaction with FFT sampling.

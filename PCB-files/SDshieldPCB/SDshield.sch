@@ -1,0 +1,274 @@
+EESchema Schematic File Version 4
+EELAYER 30 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 1 1
+Title ""
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L SDshield-rescue:EAGLE_WR-CRD_SHINY_REV21A__693071010811-SD-Karten J1
+U 1 1 61AA3D0B
+P 7650 3200
+F 0 "J1" H 7978 3226 45  0000 L CNN
+F 1 "SD-Karte 8-pin push-push" H 7978 3142 45  0000 L CNN
+F 2 "muell:SD-8pin-blck" H 7978 3079 20  0001 L CNN
+F 3 "https://www.we-online.com/catalog/datasheet/693071030811.pdf" H 7650 3200 50  0001 C CNN
+F 4 "732-693071030811CT-ND" H 7650 3200 50  0001 C CNN "Digikey SKU"
+	1    7650 3200
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:Conn_01x01_Female J2
+U 1 1 61AA56A0
+P 2450 2700
+F 0 "J2" H 2342 2475 50  0000 C CNN
+F 1 "SCK" H 2342 2566 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 2450 2700 50  0001 C CNN
+F 3 "~" H 2450 2700 50  0001 C CNN
+	1    2450 2700
+	-1   0    0    1   
+$EndComp
+$Comp
+L Connector:Conn_01x02_Female J3
+U 1 1 61AA94DA
+P 2450 2950
+F 0 "J3" H 2342 3135 50  0000 C CNN
+F 1 "MOSI/MISO" H 2342 3044 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 2450 2950 50  0001 C CNN
+F 3 "~" H 2450 2950 50  0001 C CNN
+	1    2450 2950
+	-1   0    0    -1  
+$EndComp
+$Comp
+L Connector:Conn_01x02_Female J4
+U 1 1 61AAA455
+P 2450 3900
+F 0 "J4" H 2342 4085 50  0000 C CNN
+F 1 "VCC/GND" H 2342 3994 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 2450 3900 50  0001 C CNN
+F 3 "~" H 2450 3900 50  0001 C CNN
+	1    2450 3900
+	-1   0    0    -1  
+$EndComp
+$Comp
+L Connector:Conn_01x02_Female J5
+U 1 1 61AAD7A5
+P 2450 3500
+F 0 "J5" H 2342 3175 50  0000 C CNN
+F 1 "GND|CS" H 2342 3266 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 2450 3500 50  0001 C CNN
+F 3 "~" H 2450 3500 50  0001 C CNN
+	1    2450 3500
+	-1   0    0    1   
+$EndComp
+$Comp
+L NXP_74LVC125APW:74LVC125APW U1
+U 1 1 61AB6F23
+P 3500 2900
+F 0 "U1" H 4700 3287 60  0000 C CNN
+F 1 "74LVTH125PW,118" H 4700 3181 60  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 4700 3140 60  0001 C CNN
+F 3 "https://assets.nexperia.com/documents/data-sheet/74LVT_LVTH125.pdf" H 3500 2900 60  0001 C CNN
+F 4 "1727-6707-1-ND" H 3500 2900 50  0001 C CNN "Digikey SKU"
+	1    3500 2900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3500 3200 3250 3200
+Wire Wire Line
+	3250 3200 3250 3500
+Wire Wire Line
+	3250 3500 3500 3500
+Wire Wire Line
+	3500 2900 3250 2900
+Wire Wire Line
+	3250 2900 3250 3200
+Connection ~ 3250 3200
+Wire Wire Line
+	5900 3000 6050 3000
+Wire Wire Line
+	6050 3000 6050 3300
+Wire Wire Line
+	6050 3300 5900 3300
+Wire Wire Line
+	6050 3300 6050 3600
+Connection ~ 6050 3300
+Connection ~ 3250 3500
+Text GLabel 3500 3400 0    50   Output ~ 0
+MOSI
+Text GLabel 3500 3100 0    50   Output ~ 0
+MISO
+Text GLabel 6100 3400 2    50   Input ~ 0
+SCLK
+Text GLabel 6350 3100 2    50   Input ~ 0
+CS
+Wire Wire Line
+	6100 3400 5900 3400
+Text GLabel 2650 3400 2    50   Output ~ 0
+CS
+$Comp
+L power:+3.3V #PWR0101
+U 1 1 61AC1A57
+P 2900 3900
+F 0 "#PWR0101" H 2900 3750 50  0001 C CNN
+F 1 "+3.3V" H 2915 4073 50  0000 C CNN
+F 2 "" H 2900 3900 50  0001 C CNN
+F 3 "" H 2900 3900 50  0001 C CNN
+	1    2900 3900
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR0102
+U 1 1 61AC9CD9
+P 2900 4000
+F 0 "#PWR0102" H 2900 3750 50  0001 C CNN
+F 1 "GND" H 2905 3827 50  0000 C CNN
+F 2 "" H 2900 4000 50  0001 C CNN
+F 3 "" H 2900 4000 50  0001 C CNN
+	1    2900 4000
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2650 3900 2900 3900
+Wire Wire Line
+	2650 4000 2900 4000
+$Comp
+L power:GND #PWR0103
+U 1 1 61ACA5E9
+P 3250 3700
+F 0 "#PWR0103" H 3250 3450 50  0001 C CNN
+F 1 "GND" H 3255 3527 50  0000 C CNN
+F 2 "" H 3250 3700 50  0001 C CNN
+F 3 "" H 3250 3700 50  0001 C CNN
+	1    3250 3700
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR0104
+U 1 1 61ACB1CD
+P 6050 3700
+F 0 "#PWR0104" H 6050 3450 50  0001 C CNN
+F 1 "GND" H 6055 3527 50  0000 C CNN
+F 2 "" H 6050 3700 50  0001 C CNN
+F 3 "" H 6050 3700 50  0001 C CNN
+	1    6050 3700
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3250 3500 3250 3700
+Wire Wire Line
+	2650 3500 3250 3500
+Wire Wire Line
+	5900 3500 6850 3500
+Wire Wire Line
+	7150 3600 7000 3600
+Connection ~ 6050 3600
+Wire Wire Line
+	6050 3600 6050 3700
+Wire Wire Line
+	7150 3700 7150 3600
+Connection ~ 7150 3600
+Wire Wire Line
+	6750 2900 6750 3100
+Wire Wire Line
+	6750 3100 7150 3100
+$Comp
+L power:+3.3V #PWR0105
+U 1 1 61AD25D3
+P 6200 2500
+F 0 "#PWR0105" H 6200 2350 50  0001 C CNN
+F 1 "+3.3V" H 6215 2673 50  0000 C CNN
+F 2 "" H 6200 2500 50  0001 C CNN
+F 3 "" H 6200 2500 50  0001 C CNN
+	1    6200 2500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7150 3300 7000 3300
+Wire Wire Line
+	7000 3300 7000 3600
+Connection ~ 7000 3600
+Wire Wire Line
+	7000 3600 6050 3600
+Text GLabel 6750 3400 0    50   Input ~ 0
+MISO
+Wire Wire Line
+	7150 3400 6750 3400
+Text GLabel 2650 2700 2    50   Output ~ 0
+SCLK
+Wire Wire Line
+	6850 3500 6850 3200
+Wire Wire Line
+	6850 3200 7150 3200
+Wire Wire Line
+	6800 3200 6800 2900
+Wire Wire Line
+	6800 2900 7150 2900
+Wire Wire Line
+	5900 3200 6800 3200
+Text GLabel 7100 3000 0    50   Input ~ 0
+MOSI
+Wire Wire Line
+	7100 3000 7150 3000
+Text Label 6100 3200 0    50   ~ 0
+CS_OUT
+Text Label 5900 3500 0    50   ~ 0
+SCLK_OUT
+Wire Wire Line
+	3150 3300 3500 3300
+Wire Wire Line
+	3500 2950 3500 3000
+Wire Wire Line
+	2750 3000 2750 2950
+Wire Wire Line
+	2750 2950 2650 2950
+Wire Wire Line
+	3150 3000 3150 3300
+Wire Wire Line
+	2750 3000 3150 3000
+Wire Wire Line
+	3000 3050 3000 2950
+Wire Wire Line
+	3000 2950 3500 2950
+$Comp
+L Device:R R1
+U 1 1 61AEA349
+P 6200 2700
+F 0 "R1" H 6270 2746 50  0000 L CNN
+F 1 "10k" H 6270 2655 50  0000 L CNN
+F 2 "Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder" V 6130 2700 50  0001 C CNN
+F 3 "https://www.seielect.com/catalog/sei-rncp.pdf" H 6200 2700 50  0001 C CNN
+F 4 "RNCP0603FTD10K0CT-ND" H 6200 2700 50  0001 C CNN "Digikey SKU"
+	1    6200 2700
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2650 3050 3000 3050
+Wire Wire Line
+	6200 2500 6200 2550
+Wire Wire Line
+	5900 2900 6500 2900
+Wire Wire Line
+	5900 3100 6200 3100
+Wire Wire Line
+	6200 2850 6200 3100
+Connection ~ 6200 3100
+Wire Wire Line
+	6200 3100 6350 3100
+Wire Wire Line
+	6200 2550 6500 2550
+Wire Wire Line
+	6500 2550 6500 2900
+Connection ~ 6200 2550
+Connection ~ 6500 2900
+Wire Wire Line
+	6500 2900 6750 2900
+$EndSCHEMATC

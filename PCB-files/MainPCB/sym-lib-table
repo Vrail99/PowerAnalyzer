@@ -1,0 +1,9 @@
+(sym_lib_table
+  (lib (name Teensy)(type Legacy)(uri ${KIPRJMOD}/project_libraries/Teensy/teensy_library/teensy.lib)(options "")(descr ""))
+  (lib (name ACS71020)(type Legacy)(uri ${KIPRJMOD}/project_libraries/ACS71020KMABTR030B3SPI/ACS71020KMABTR-030B3-SPI.lib)(options "")(descr ""))
+  (lib (name Own_symbollib)(type Legacy)(uri ${KIPRJMOD}/project_libraries/Own_symbollib.lib)(options "")(descr ""))
+  (lib (name PBO-1-S5)(type Legacy)(uri ${KIPRJMOD}/project_libraries/PBO-1-S5.lib)(options "")(descr ""))
+  (lib (name F0505XT-1WR3-TR)(type Legacy)(uri ${KIPRJMOD}/project_libraries/F0505XT-1WR3-TR/F0505XT-1WR3-TR.lib)(options "")(descr ""))
+  (lib (name TE-Conn-Board)(type Legacy)(uri ${KIPRJMOD}/project_libraries/TE_connectors/TE-Conn-Board.lib)(options "")(descr ""))
+  (lib (name PBO-3C-5)(type Legacy)(uri ${KIPRJMOD}/project_libraries/PBO-3C-5/PBO-3C-5.lib)(options "")(descr ""))
+)

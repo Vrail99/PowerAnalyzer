@@ -1,0 +1,5 @@
+(fp_lib_table
+  (lib (name "teensy")(type "KiCad")(uri "${KIPRJMOD}/project_libraries/Teensy/teensy.pretty")(options "")(descr ""))
+  (lib (name "PBO-3C-5")(type "KiCad")(uri "${KIPRJMOD}/project_libraries/PBO-3C-5.pretty")(options "")(descr ""))
+  (lib (name "IES_Logo")(type "KiCad")(uri "/Users/macbook/Dropbox/TU-Darmstadt/HiWi Job/IES_Logo.pretty")(options "")(descr ""))
+)

@@ -1,0 +1,8 @@
+Reference, Quantity, Value, Footprint, Datasheet, Digikey SKU
+J1 ,1,"SD-Karte 8-pin push-push","muell:SD-8pin-blck","https://www.we-online.com/catalog/datasheet/693071030811.pdf","732-693071030811CT-ND"
+J2 ,1,"SCK","Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical","~"
+J3 ,1,"MOSI/MISO","Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical","~"
+J4 ,1,"VCC/GND","Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical","~"
+J5 ,1,"GND|CS","Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical","~"
+R1 ,1,"10k","Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder","https://www.seielect.com/catalog/sei-rncp.pdf","RNCP0603FTD10K0CT-ND"
+U1 ,1,"74LVTH125PW,118","Package_SO:TSSOP-14_4.4x5mm_P0.65mm","https://assets.nexperia.com/documents/data-sheet/74LVT_LVTH125.pdf","1727-6707-1-ND"
