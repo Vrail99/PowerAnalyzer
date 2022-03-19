@@ -1,0 +1,27 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#(c) SnapEDA 2016 (snapeda.com)
+#This work is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA) with Design Exception 1.0
+#
+# F0505XT-1WR3-TR
+#
+DEF F0505XT-1WR3-TR PS 0 40 Y Y 1 L N
+F0 "PS" -400 350 50 H V L BNN
+F1 "F0505XT-1WR3-TR" -400 -400 50 H V L BNN
+F2 "CONV_F0505XT-1WR3-TR" 0 0 50 H I L BNN
+F3 "" 0 0 50 H I L BNN
+F4 "Mornsun" 0 0 50 H I L BNN "MANUFACTURER"
+F5 "Manufacturer Recommendations" 0 0 50 H I L BNN "STANDARD"
+F6 "2019.10.18-A/4" 0 0 50 H I L BNN "PARTREV"
+F7 "7.50 mm" 0 0 50 H I L BNN "MAXIMUM_PACKAGE_HEIGHT"
+DRAW
+S -400 -300 400 300 0 0 10 f
+X VIN 2 -600 200 200 R 40 40 0 0 I 
+X NC 8 600 -200 200 L 40 40 0 0 N 
+X +VO 5 600 200 200 L 40 40 0 0 O 
+X GND 1 -600 0 200 R 40 40 0 0 W 
+X 0V 4 600 0 200 L 40 40 0 0 P 
+ENDDRAW
+ENDDEF
+#
+# End Library

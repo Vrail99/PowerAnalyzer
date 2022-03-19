@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="D">
+  <design>
+    <source>E:\PowerAnalyzer\SDshield\SDshield.sch</source>
+    <date>20.12.2021 21:59:11</date>
+    <tool>Eeschema (5.1.5)-3</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title/>
+        <company/>
+        <rev/>
+        <date/>
+        <source>SDshield.sch</source>
+        <comment number="1" value=""/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="J1">
+      <value>SD-Karte 8-pin push-push</value>
+      <footprint>muell:SD-8pin-blck</footprint>
+      <datasheet>https://www.we-online.com/catalog/datasheet/693071030811.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">732-693071030811CT-ND</field>
+      </fields>
+      <libsource lib="SD-Karten" part="EAGLE_WR-CRD_SHINY_REV21A__693071010811" description=""/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61AA3D0B</tstamp>
+    </comp>
+    <comp ref="J2">
+      <value>SCK</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical</footprint>
+      <datasheet>~</datasheet>
+      <libsource lib="Connector" part="Conn_01x01_Female" description="Generic connector, single row, 01x01, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61AA56A0</tstamp>
+    </comp>
+    <comp ref="J3">
+      <value>MOSI/MISO</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</footprint>
+      <datasheet>~</datasheet>
+      <libsource lib="Connector" part="Conn_01x02_Female" description="Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61AA94DA</tstamp>
+    </comp>
+    <comp ref="J4">
+      <value>VCC/GND</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</footprint>
+      <datasheet>~</datasheet>
+      <libsource lib="Connector" part="Conn_01x02_Female" description="Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61AAA455</tstamp>
+    </comp>
+    <comp ref="J5">
+      <value>GND|CS</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</footprint>
+      <datasheet>~</datasheet>
+      <libsource lib="Connector" part="Conn_01x02_Female" description="Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61AAD7A5</tstamp>
+    </comp>
+    <comp ref="U1">
+      <value>74LVTH125PW,118</value>
+      <footprint>Package_SO:TSSOP-14_4.4x5mm_P0.65mm</footprint>
+      <datasheet>https://assets.nexperia.com/documents/data-sheet/74LVT_LVTH125.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">1727-6707-1-ND</field>
+      </fields>
+      <libsource lib="NXP_74LVC125APW" part="74LVC125APW" description=""/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61AB6F23</tstamp>
+    </comp>
+    <comp ref="R1">
+      <value>10k</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://www.seielect.com/catalog/sei-rncp.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">RNCP0603FTD10K0CT-ND</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61AEA349</tstamp>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Connector" part="Conn_01x01_Female">
+      <description>Generic connector, single row, 01x01, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x01_Female</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x02_Female">
+      <description>Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x02_Female</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="R">
+      <description>Resistor</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>R_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">R</field>
+        <field name="Value">R</field>
+      </fields>
+      <pins>
+        <pin num="1" name="~" type="passive"/>
+        <pin num="2" name="~" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="NXP_74LVC125APW" part="74LVC125APW">
+      <footprints>
+        <fp>SOT402-1_NXP</fp>
+        <fp>SOT402-1_NXP-M</fp>
+        <fp>SOT402-1_NXP-L</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">74LVC125APW</field>
+        <field name="Footprint">SOT402-1_NXP</field>
+      </fields>
+      <pins>
+        <pin num="1" name="1OE*" type="input"/>
+        <pin num="2" name="1A" type="input"/>
+        <pin num="3" name="1Y" type="output"/>
+        <pin num="4" name="2OE*" type="input"/>
+        <pin num="5" name="2A" type="input"/>
+        <pin num="6" name="2Y" type="output"/>
+        <pin num="7" name="GND" type="power_in"/>
+        <pin num="8" name="3Y" type="output"/>
+        <pin num="9" name="3A" type="input"/>
+        <pin num="10" name="3OE*" type="input"/>
+        <pin num="11" name="4Y" type="output"/>
+        <pin num="12" name="4A" type="input"/>
+        <pin num="13" name="4OE*" type="input"/>
+        <pin num="14" name="VCC" type="power_in"/>
+      </pins>
+    </libpart>
+    <libpart lib="SD-Karten" part="EAGLE_WR-CRD_SHINY_REV21A__693071010811">
+      <footprints>
+        <fp>*EAGLE_WR-CRD_SHINY(REV21A)_693071010811*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">EAGLE_WR-CRD_SHINY_REV21A__693071010811</field>
+        <field name="Footprint">EAGLE_WR-CRD_SHINY_REV21A__693071010811</field>
+      </fields>
+      <pins>
+        <pin num="1" name="DAT2" type="BiDi"/>
+        <pin num="2" name="CD/DAT3" type="BiDi"/>
+        <pin num="3" name="CMD" type="BiDi"/>
+        <pin num="4" name="VDD" type="BiDi"/>
+        <pin num="5" name="CLK" type="BiDi"/>
+        <pin num="6" name="VSS" type="BiDi"/>
+        <pin num="7" name="DAT0" type="BiDi"/>
+        <pin num="8" name="DAT1" type="BiDi"/>
+        <pin num="9" name="CDSW1" type="BiDi"/>
+        <pin num="10" name="CDSW2" type="BiDi"/>
+        <pin num="10-1" name="CDSW2" type="BiDi"/>
+        <pin num="9-1" name="CDSW1" type="BiDi"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="Connector">
+      <uri>C:\Program Files\KiCad\share\kicad\library/Connector.lib</uri>
+    </library>
+    <library logical="Device">
+      <uri>C:\Program Files\KiCad\share\kicad\library/Device.lib</uri>
+    </library>
+    <library logical="NXP_74LVC125APW">
+      <uri>E:\PowerAnalyzer\SDshield/libs/NXP_74LVC125APW/NXP_74LVC125APW.lib</uri>
+    </library>
+    <library logical="SD-Karten">
+      <uri>D:/Bibliotheken/Dokumente/EAGLE/projects/ConvertProkelt/kicad/SD-Karten.lib</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="+3V3">
+      <node ref="J4" pin="1"/>
+      <node ref="R1" pin="1"/>
+      <node ref="J1" pin="4"/>
+      <node ref="U1" pin="14"/>
+    </net>
+    <net code="2" name="/SCLK_OUT">
+      <node ref="J1" pin="5"/>
+      <node ref="U1" pin="8"/>
+    </net>
+    <net code="3" name="MISO">
+      <node ref="U1" pin="3"/>
+      <node ref="J1" pin="7"/>
+    </net>
+    <net code="4" name="Net-(J3-Pad2)">
+      <node ref="J3" pin="2"/>
+      <node ref="U1" pin="2"/>
+    </net>
+    <net code="5" name="Net-(J3-Pad1)">
+      <node ref="U1" pin="5"/>
+      <node ref="J3" pin="1"/>
+    </net>
+    <net code="6" name="/CS_OUT">
+      <node ref="J1" pin="2"/>
+      <node ref="U1" pin="11"/>
+    </net>
+    <net code="7" name="MOSI">
+      <node ref="J1" pin="3"/>
+      <node ref="U1" pin="6"/>
+    </net>
+    <net code="8" name="CS">
+      <node ref="R1" pin="2"/>
+      <node ref="J5" pin="2"/>
+      <node ref="U1" pin="12"/>
+    </net>
+    <net code="9" name="GND">
+      <node ref="J1" pin="9"/>
+      <node ref="J1" pin="9-1"/>
+      <node ref="U1" pin="13"/>
+      <node ref="J4" pin="2"/>
+      <node ref="U1" pin="7"/>
+      <node ref="U1" pin="4"/>
+      <node ref="U1" pin="1"/>
+      <node ref="J5" pin="1"/>
+      <node ref="U1" pin="10"/>
+      <node ref="J1" pin="6"/>
+      <node ref="J1" pin="10-1"/>
+      <node ref="J1" pin="10"/>
+    </net>
+    <net code="10" name="SCLK">
+      <node ref="J2" pin="1"/>
+      <node ref="U1" pin="9"/>
+    </net>
+    <net code="11" name="Net-(J1-Pad1)">
+      <node ref="J1" pin="1"/>
+    </net>
+    <net code="12" name="Net-(J1-Pad8)">
+      <node ref="J1" pin="8"/>
+    </net>
+  </nets>
+</export>

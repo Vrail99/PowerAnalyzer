@@ -276,14 +276,11 @@ class mainWindow(tk.Tk):
             # Get conversion factors
             try:
                 self.sBus.writeString('es')
-                tmp = str(self.sBus.readLine()).split(',')
-                v_conv_factor = 0
-                i_conv_factor = 0
-                if (tmp[0] == "VRMS"):
-                    v_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[1]), 23, 24)
-                tmp = str(self.sBus.readLine()).split(',')
-                if (tmp[0] == "IRMS"):
-                    i_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[1]), 23, 24)
+                tmp = self.sBus.readLine().split(',')
+                print("Got ConversionFactors:", tmp)
+                v_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[0]), 23, 24)
+                i_conv_factor = utils.ConvertUnsignedFixedPoint(int(tmp[1]), 23, 24)
+
                 self.pages[LivePage].setConversionFactors(v_conv_factor, i_conv_factor)
             except TypeError as e:
                 print(e)

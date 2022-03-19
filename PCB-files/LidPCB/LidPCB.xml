@@ -1,0 +1,614 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="D">
+  <design>
+    <source>E:\PowerAnalyzer\LidPCB\LidPCB.sch</source>
+    <date>20.12.2021 20:01:22</date>
+    <tool>Eeschema (5.1.5)-3</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title/>
+        <company/>
+        <rev/>
+        <date/>
+        <source>LidPCB.sch</source>
+        <comment number="1" value=""/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="U1">
+      <value>XC6206P332MR</value>
+      <footprint>Package_TO_SOT_SMD:SOT-23</footprint>
+      <datasheet>https://www.torexsemi.com/file/xc6206/XC6206.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">XC6206P332MR-G-ND</field>
+      </fields>
+      <libsource lib="Regulator_Linear" part="XC6206PxxxMR" description="Positive 60-250mA Low Dropout Regulator, Fixed Output, SOT-23"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>616EB372</tstamp>
+    </comp>
+    <comp ref="U3">
+      <value>OLED-Display</value>
+      <footprint>LidPCB:FPC_Soldering_P0.65x25Pin_OLED</footprint>
+      <datasheet>https://www.buydisplay.com/download/manual/ER-OLED015-3_Datasheet.pdf</datasheet>
+      <fields>
+        <field name="Feld4">ER-OLED015-3W</field>
+      </fields>
+      <libsource lib="OLED_Components" part="OLED-Display" description="ER-OLED015-3W"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>616ED016</tstamp>
+    </comp>
+    <comp ref="R2">
+      <value>10k</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://www.seielect.com/catalog/sei-rncp.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">RNCP0603FTD10K0CT-ND</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61702B28</tstamp>
+    </comp>
+    <comp ref="R3">
+      <value>10k</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://www.seielect.com/catalog/sei-rncp.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">RNCP0603FTD10K0CT-ND</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61704EDB</tstamp>
+    </comp>
+    <comp ref="R4">
+      <value>10k</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://www.seielect.com/catalog/sei-rncp.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">RNCP0603FTD10K0CT-ND</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>617051EB</tstamp>
+    </comp>
+    <comp ref="U2">
+      <value>R1200N002A-TR-FE</value>
+      <footprint>Package_TO_SOT_SMD:SOT-23-6_Handsoldering</footprint>
+      <datasheet>https://www.n-redc.co.jp/en/pdf/datasheet/r1200-ea.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">2129-R1200N002A-TR-FETR-ND</field>
+      </fields>
+      <libsource lib="OLED_Components" part="R1200N002A-TR-FE" description=""/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>617282EA</tstamp>
+    </comp>
+    <comp ref="C5">
+      <value>1u</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder</footprint>
+      <datasheet>~</datasheet>
+      <fields>
+        <field name="Digikey SKU">587-6338-1-ND</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>6172AA5B</tstamp>
+    </comp>
+    <comp ref="L1">
+      <value>22uH</value>
+      <footprint>LidPCB:IND_LQH2MCN220K02L</footprint>
+      <datasheet>https://search.murata.co.jp/Ceramy/image/img/P02/JELF243A-0053.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">490-4048-2-ND</field>
+      </fields>
+      <libsource lib="Device" part="L" description="Inductor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>6172EF01</tstamp>
+    </comp>
+    <comp ref="R6">
+      <value>10k</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://www.seielect.com/catalog/sei-rncp.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">RNCP0603FTD10K0CT-ND</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>6173B9DA</tstamp>
+    </comp>
+    <comp ref="R7">
+      <value>140k</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://www.seielect.com/catalog/sei-rmcf_rmcp.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">RMCF0603FT140KCT-ND</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>6173CA35</tstamp>
+    </comp>
+    <comp ref="R8">
+      <value>2k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder</footprint>
+      <datasheet>~</datasheet>
+      <fields>
+        <field name="Digikey SKU">A126358CT-ND</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>6173D056</tstamp>
+    </comp>
+    <comp ref="C8">
+      <value>22pF</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://datasheets.avx.com/LD-Series.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">478-12912-2-ND</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>6173D684</tstamp>
+    </comp>
+    <comp ref="C3">
+      <value>4.7u</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://datasheets.avx.com/LD-Series.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">478-12912-2-ND</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61763C24</tstamp>
+    </comp>
+    <comp ref="C4">
+      <value>4.7u</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://datasheets.avx.com/LD-Series.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">478-12912-2-ND</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61771D47</tstamp>
+    </comp>
+    <comp ref="C7">
+      <value>100n</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder</footprint>
+      <datasheet>https://datasheets.avx.com/U-Series.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">478-10836-1-ND</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>61772503</tstamp>
+    </comp>
+    <comp ref="C6">
+      <value>100n</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder</footprint>
+      <datasheet>https://datasheets.avx.com/U-Series.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">478-10836-1-ND</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>6178DE97</tstamp>
+    </comp>
+    <comp ref="R5">
+      <value>1meg</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder</footprint>
+      <datasheet>https://www.te.com/commerce/DocumentDelivery/DDEController?Action=srchrtrv&amp;DocNm=1773204&amp;DocType=DS&amp;DocLang=English</datasheet>
+      <fields>
+        <field name="Digikey SKU">A129785CT-ND</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>6179EA76</tstamp>
+    </comp>
+    <comp ref="R1">
+      <value>10k</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://www.seielect.com/catalog/sei-rncp.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">RNCP0603FTD10K0CT-ND</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>617A6D69</tstamp>
+    </comp>
+    <comp ref="C2">
+      <value>100n</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder</footprint>
+      <datasheet>https://datasheets.avx.com/U-Series.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">478-10836-1-ND</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>617B8246</tstamp>
+    </comp>
+    <comp ref="C1">
+      <value>100n</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder</footprint>
+      <datasheet>https://datasheets.avx.com/U-Series.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">478-10836-1-ND</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>617B9210</tstamp>
+    </comp>
+    <comp ref="U4">
+      <value>CAP1293-1-SN</value>
+      <footprint>LidPCB:CAP1293-1-SN</footprint>
+      <fields>
+        <field name="Digikey SKU">CAP1293-1-SN-ND</field>
+      </fields>
+      <libsource lib="CAP1293" part="CAP1293-1-SN" description=""/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>6171A5BA</tstamp>
+    </comp>
+    <comp ref="R9">
+      <value>10k</value>
+      <footprint>Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder</footprint>
+      <datasheet>https://www.seielect.com/catalog/sei-rncp.pdf</datasheet>
+      <fields>
+        <field name="Digikey SKU">RNCP0603FTD10K0CT-ND</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>617614C9</tstamp>
+    </comp>
+    <comp ref="J1">
+      <value>Conn_01x8_Female</value>
+      <footprint>LidPCB:FPC_8-pin_horizontal_686108188622</footprint>
+      <datasheet>~</datasheet>
+      <fields>
+        <field name="Digikey SKU">732-686108188622CT-ND</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x08_Female" description="Generic connector, single row, 01x08, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamp>6172C833</tstamp>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="CAP1293" part="CAP1293-1-SN">
+      <footprints>
+        <fp>SOIC8_4P9X3P9MC_MCH</fp>
+        <fp>SOIC8_4P9X3P9MC_MCH-M</fp>
+        <fp>SOIC8_4P9X3P9MC_MCH-L</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">CAP1293-1-SN</field>
+        <field name="Footprint">SOIC8_4P9X3P9MC_MCH</field>
+      </fields>
+      <pins>
+        <pin num="1" name="ALERT-" type="unspc"/>
+        <pin num="2" name="SMDAT" type="unspc"/>
+        <pin num="3" name="SMCLK" type="unspc"/>
+        <pin num="4" name="VDD" type="power_in"/>
+        <pin num="5" name="GND" type="power_in"/>
+        <pin num="6" name="CS3" type="BiDi"/>
+        <pin num="7" name="CS2/SG" type="BiDi"/>
+        <pin num="8" name="CS1" type="BiDi"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x08_Female">
+      <description>Generic connector, single row, 01x08, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x08_Female</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+        <pin num="4" name="Pin_4" type="passive"/>
+        <pin num="5" name="Pin_5" type="passive"/>
+        <pin num="6" name="Pin_6" type="passive"/>
+        <pin num="7" name="Pin_7" type="passive"/>
+        <pin num="8" name="Pin_8" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="C">
+      <description>Unpolarized capacitor</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>C_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value">C</field>
+      </fields>
+      <pins>
+        <pin num="1" name="~" type="passive"/>
+        <pin num="2" name="~" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="L">
+      <description>Inductor</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Choke_*</fp>
+        <fp>*Coil*</fp>
+        <fp>Inductor_*</fp>
+        <fp>L_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">L</field>
+        <field name="Value">L</field>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="R">
+      <description>Resistor</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>R_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">R</field>
+        <field name="Value">R</field>
+      </fields>
+      <pins>
+        <pin num="1" name="~" type="passive"/>
+        <pin num="2" name="~" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="OLED_Components" part="OLED-Display">
+      <description>ER-OLED015-3W</description>
+      <docs>https://www.buydisplay.com/download/manual/ER-OLED015-3_Datasheet.pdf</docs>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">OLED-Display</field>
+        <field name="Footprint">LidPCB:FPC_Soldering_P0.65x25Pin_OLED</field>
+        <field name="Feld4">ER-OLED015-3W</field>
+      </fields>
+      <pins>
+        <pin num="1" name="VSS" type="unspc"/>
+        <pin num="2" name="VCC" type="unspc"/>
+        <pin num="3" name="VCOMH" type="unspc"/>
+        <pin num="4" name="GPIO" type="unspc"/>
+        <pin num="5" name="VCI" type="unspc"/>
+        <pin num="6" name="VDD" type="unspc"/>
+        <pin num="7" name="BS1" type="unspc"/>
+        <pin num="8" name="BS2" type="unspc"/>
+        <pin num="9" name="VSS" type="unspc"/>
+        <pin num="10" name="IREF" type="unspc"/>
+        <pin num="11" name="CS" type="unspc"/>
+        <pin num="12" name="RESET" type="unspc"/>
+        <pin num="13" name="DC" type="unspc"/>
+        <pin num="14" name="WR" type="unspc"/>
+        <pin num="15" name="RD" type="unspc"/>
+        <pin num="16" name="D0" type="unspc"/>
+        <pin num="17" name="D1" type="unspc"/>
+        <pin num="18" name="D2" type="unspc"/>
+        <pin num="19" name="D3" type="unspc"/>
+        <pin num="20" name="D4" type="unspc"/>
+        <pin num="21" name="D5" type="unspc"/>
+        <pin num="22" name="D6" type="unspc"/>
+        <pin num="23" name="D7" type="unspc"/>
+        <pin num="24" name="VCC" type="unspc"/>
+        <pin num="25" name="VSS" type="unspc"/>
+      </pins>
+    </libpart>
+    <libpart lib="OLED_Components" part="R1200N002A-TR-FE">
+      <docs>https://www.n-redc.co.jp/en/pdf/datasheet/r1200-ea.pdf</docs>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">R1200N002A-TR-FE</field>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23-6_Handsoldering</field>
+        <field name="Digikey SKU">2129-R1200N002A-TR-FETR-ND</field>
+      </fields>
+      <pins>
+        <pin num="1" name="CE" type="input"/>
+        <pin num="2" name="Vout" type="input"/>
+        <pin num="3" name="Vdd" type="input"/>
+        <pin num="4" name="Lx" type="input"/>
+        <pin num="5" name="GND" type="input"/>
+        <pin num="6" name="Vfb" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="Regulator_Linear" part="APE8865N-12-HF-3">
+      <aliases>
+        <alias>APE8865N-15-HF-3</alias>
+        <alias>APE8865N-16-HF-3</alias>
+        <alias>APE8865N-17-HF-3</alias>
+        <alias>APE8865N-18-HF-3</alias>
+        <alias>APE8865N-19-HF-3</alias>
+        <alias>APE8865N-20-HF-3</alias>
+        <alias>APE8865N-21-HF-3</alias>
+        <alias>APE8865N-22-HF-3</alias>
+        <alias>APE8865N-23-HF-3</alias>
+        <alias>APE8865N-24-HF-3</alias>
+        <alias>APE8865N-25-HF-3</alias>
+        <alias>APE8865N-26-HF-3</alias>
+        <alias>APE8865N-27-HF-3</alias>
+        <alias>APE8865N-28-HF-3</alias>
+        <alias>APE8865N-29-HF-3</alias>
+        <alias>APE8865N-30-HF-3</alias>
+        <alias>APE8865N-31-HF-3</alias>
+        <alias>APE8865N-32-HF-3</alias>
+        <alias>APE8865N-33-HF-3</alias>
+        <alias>AP2127N-1.0</alias>
+        <alias>AP2127N-1.2</alias>
+        <alias>AP2127N-1.5</alias>
+        <alias>AP2127N-1.8</alias>
+        <alias>AP2127N-2.5</alias>
+        <alias>AP2127N-2.8</alias>
+        <alias>AP2127N-3.0</alias>
+        <alias>AP2127N-3.3</alias>
+        <alias>XC6206PxxxMR</alias>
+      </aliases>
+      <description>300mA Low Dropout Voltage Regulator, Fixed Output 1.2V, SOT-23</description>
+      <docs>http://www.tme.eu/fr/Document/ced3461ed31ea70a3c416fb648e0cde7/APE8865-3.pdf</docs>
+      <footprints>
+        <fp>SOT?23*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">APE8865N-12-HF-3</field>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23</field>
+      </fields>
+      <pins>
+        <pin num="1" name="GND" type="power_in"/>
+        <pin num="2" name="VO" type="power_out"/>
+        <pin num="3" name="VI" type="power_in"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="CAP1293">
+      <uri>E:\PowerAnalyzer\LidPCB/CAP1293.lib</uri>
+    </library>
+    <library logical="Connector">
+      <uri>C:\Program Files\KiCad\share\kicad\library/Connector.lib</uri>
+    </library>
+    <library logical="Device">
+      <uri>C:\Program Files\KiCad\share\kicad\library/Device.lib</uri>
+    </library>
+    <library logical="OLED_Components">
+      <uri>E:\PowerAnalyzer\LidPCB/OLED_Components.lib</uri>
+    </library>
+    <library logical="Regulator_Linear">
+      <uri>C:\Program Files\KiCad\share\kicad\library/Regulator_Linear.lib</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="GND">
+      <node ref="U3" pin="20"/>
+      <node ref="U3" pin="19"/>
+      <node ref="U3" pin="15"/>
+      <node ref="U3" pin="14"/>
+      <node ref="U3" pin="21"/>
+      <node ref="U3" pin="1"/>
+      <node ref="U3" pin="25"/>
+      <node ref="U3" pin="23"/>
+      <node ref="J1" pin="8"/>
+      <node ref="J1" pin="2"/>
+      <node ref="U3" pin="9"/>
+      <node ref="C5" pin="2"/>
+      <node ref="U1" pin="1"/>
+      <node ref="U2" pin="5"/>
+      <node ref="U3" pin="8"/>
+      <node ref="U3" pin="4"/>
+      <node ref="U3" pin="22"/>
+      <node ref="C8" pin="2"/>
+      <node ref="R7" pin="2"/>
+      <node ref="C2" pin="1"/>
+      <node ref="C4" pin="1"/>
+      <node ref="C6" pin="2"/>
+      <node ref="R5" pin="2"/>
+      <node ref="C1" pin="1"/>
+      <node ref="C3" pin="1"/>
+      <node ref="U4" pin="5"/>
+    </net>
+    <net code="2" name="Vcc">
+      <node ref="U2" pin="2"/>
+      <node ref="U3" pin="2"/>
+      <node ref="C3" pin="2"/>
+      <node ref="U3" pin="24"/>
+      <node ref="R6" pin="1"/>
+      <node ref="R8" pin="1"/>
+    </net>
+    <net code="3" name="SG">
+      <node ref="U4" pin="7"/>
+    </net>
+    <net code="4" name="TS2">
+      <node ref="U4" pin="6"/>
+    </net>
+    <net code="5" name="SDA">
+      <node ref="J1" pin="7"/>
+      <node ref="U3" pin="17"/>
+      <node ref="R2" pin="2"/>
+      <node ref="U3" pin="18"/>
+      <node ref="U4" pin="2"/>
+    </net>
+    <net code="6" name="/VCI">
+      <node ref="C7" pin="1"/>
+      <node ref="U3" pin="5"/>
+      <node ref="U3" pin="7"/>
+    </net>
+    <net code="7" name="+3.3V">
+      <node ref="C1" pin="2"/>
+      <node ref="R2" pin="1"/>
+      <node ref="R3" pin="1"/>
+      <node ref="U1" pin="2"/>
+      <node ref="C7" pin="2"/>
+      <node ref="R1" pin="1"/>
+      <node ref="L1" pin="2"/>
+      <node ref="C5" pin="1"/>
+      <node ref="U4" pin="4"/>
+      <node ref="U2" pin="3"/>
+      <node ref="R9" pin="1"/>
+      <node ref="U2" pin="1"/>
+      <node ref="R4" pin="1"/>
+    </net>
+    <net code="8" name="/Iref">
+      <node ref="U3" pin="10"/>
+      <node ref="R5" pin="1"/>
+    </net>
+    <net code="9" name="TS1">
+      <node ref="U4" pin="8"/>
+    </net>
+    <net code="10" name="/Lx">
+      <node ref="L1" pin="1"/>
+      <node ref="U2" pin="4"/>
+    </net>
+    <net code="11" name="/VCOMH">
+      <node ref="U3" pin="3"/>
+      <node ref="C4" pin="2"/>
+    </net>
+    <net code="12" name="/VDD">
+      <node ref="U3" pin="6"/>
+      <node ref="C6" pin="1"/>
+    </net>
+    <net code="13" name="IRQ">
+      <node ref="J1" pin="4"/>
+      <node ref="R9" pin="2"/>
+      <node ref="U4" pin="1"/>
+    </net>
+    <net code="14" name="RST">
+      <node ref="R1" pin="2"/>
+      <node ref="J1" pin="3"/>
+      <node ref="C2" pin="2"/>
+      <node ref="U3" pin="12"/>
+    </net>
+    <net code="15" name="+5V">
+      <node ref="J1" pin="1"/>
+      <node ref="U1" pin="3"/>
+    </net>
+    <net code="16" name="SCK">
+      <node ref="U3" pin="16"/>
+      <node ref="J1" pin="6"/>
+      <node ref="R3" pin="2"/>
+      <node ref="U4" pin="3"/>
+    </net>
+    <net code="17" name="DC">
+      <node ref="J1" pin="5"/>
+      <node ref="U3" pin="13"/>
+      <node ref="R4" pin="2"/>
+    </net>
+    <net code="18" name="Net-(U3-Pad11)">
+      <node ref="U3" pin="11"/>
+    </net>
+    <net code="19" name="Net-(C8-Pad1)">
+      <node ref="R8" pin="2"/>
+      <node ref="C8" pin="1"/>
+    </net>
+    <net code="20" name="/Vfb">
+      <node ref="U2" pin="6"/>
+      <node ref="R7" pin="1"/>
+      <node ref="R6" pin="2"/>
+    </net>
+  </nets>
+</export>

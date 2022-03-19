@@ -1,0 +1,5 @@
+(sym_lib_table
+  (lib (name teensy)(type Legacy)(uri E:/PowerAnalyzer/MainPCB/project_libraries/Teensy/teensy_library/teensy.lib)(options "")(descr ""))
+  (lib (name NXP_74LVC125APW)(type Legacy)(uri ${KIPRJMOD}/libs/NXP_74LVC125APW/NXP_74LVC125APW.lib)(options "")(descr ""))
+  (lib (name SDshield-rescue)(type Legacy)(uri ${KIPRJMOD}/SDshield-rescue.lib)(options "")(descr ""))
+)
