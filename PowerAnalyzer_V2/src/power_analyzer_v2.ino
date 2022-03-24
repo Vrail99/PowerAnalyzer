@@ -27,13 +27,14 @@ SOFTWARE.
 */
 
 #include <arm_math.h>         //Include of DSP library
-#include <ACS71020.h>         //Include of the Chip-Library
-#include <Adafruit_SSD1327.h> //Display Library
 #include <TimeLib.h>          //Time Library for Real-Time Clock
 #include <math.h>
-#include <Watchdog_t4.h> //Watchdog Library for reset on error
 #include <EEPROM.h>
 #include <SD.h>
+#include "ACS71020.h"         //Include of the Chip-Library
+#include "Adafruit_SSD1327.h" //Display Library
+#include "Watchdog_t4.h" //Watchdog Library for reset on error
+#include "displayConfig.h"
 #include "CAP1293.h"
 
 //Uncomment for Debug messages on Serial Port 3
@@ -65,21 +66,17 @@ SOFTWARE.
 //SD-Card CS-Pin
 #define SD_CS_PIN 0
 
-  //Touch-Controller
-#define NO_OF_PAGES 6
+//Touch-Controller
 uint8_t currPage = 0;
 
 #define ACS_SPI_SPEED 10000000 //SPI Speed setting for the ACS Chip (10 Mhz)
 
 #define VRMS_cal_address 0
 #define IRMS_cal_address VRMS_cal_address + 4
-//float exp_VRMS = 0.1784;
-//float exp_IRMS = 0.26086;
+
 //Values predefined if EEPROM-read error
 float conv_factor_VRMS = 8.384 * pow(10, -6);
 float conv_factor_IRMS = 1.015 * pow(10, -3);
-//uint32_t calFactor_VRMS = 21280;
-//uint32_t calFactor_IRMS = 257;
 
 //Creation of a Chip instance
 ACS71020 ACSchip(ACS_SPI_SPEED, ACS_CS, ACS_EN);
@@ -291,7 +288,7 @@ void setup() {
 
 
   //End of Init
-}
+  }
 
 void loop() {
   newTime = millis(); //Get current millis for timing
@@ -326,7 +323,7 @@ void loop() {
         thdsg_v = calcTHDSG(Mags, fgroups, 17);
       }
 
-      if (currPage == 4)
+      if (currPage == DISP_FFT_VOLT)
         displayFFT();
 
       //FFT for Current samples
@@ -348,7 +345,7 @@ void loop() {
         thdsg_i = calcTHDSG(Mags, fgroups, 17);
       }
 
-      if (currPage == 5)
+      if (currPage == DISP_FFT_CURRENT)
         displayFFT();
 
       startSamplingFFT();
@@ -358,11 +355,9 @@ void loop() {
 
   //Update Display with a fixed timing only
   if (newTime > (displayTime + DISPLAY_UPD_RATE)) {
-    if (currPage != 4 && currPage != 5 && !computerConnected) {
-      updateDisplay();
-      displayTime = newTime;
-    }
+    updateDisplay();
     displayTime = newTime;
+    detectVoltage();
   }
 
 
@@ -383,6 +378,7 @@ void loop() {
     checkTime = newTime;
   }
 }
+
 
 void displayFFT() {
   display.clearDisplay();
@@ -753,7 +749,7 @@ void getSamples_FFT() {
   sampleCntr += 2;
   if (sampleCntr >= 2 * FFTREALSAMPLES - 1) //Sample Buffer is filled up
   {
-    for (int i = sampleCntr; i < FFTBUFFLEN; i++) //Zero-Pad the rest, because the FFT-Function works in-place
+    for (uint32_t i = sampleCntr; i < FFTBUFFLEN; i++) //Zero-Pad the rest, because the FFT-Function works in-place
     {
       vSamps[i] = 0.0;
       iSamps[i] = 0.0;
@@ -774,7 +770,7 @@ void detectVoltage() {
     SerialUSB1.printf("Voltage Detected: %.2f V_RMS", tmp);
     #endif
   }
-}
+  }
 /*
 Stream vcodes and icodes to Serial. Helper
 */
@@ -1229,53 +1225,56 @@ float calcTHDSG(float frequencies[], float output[], int order) {
   Updates the Display with values
 */
 void updateDisplay() {
-  #ifdef DEBUG
-  SerialUSB1.printf("Updating Display\n");
-  #endif
+  if (currPage == DISP_FFT_VOLT || currPage == DISP_FFT_CURRENT || computerConnected) {
+    return;
+  }
   #ifdef INIT_DISP
   float temp;
   display.clearDisplay();
   display.setCursor(0, 0); //Cursor Position top-left
     //Updates to the display
   if (!voltage_detected) {
-    display.printf("Voltage \ntoo low:\n%2f", ACSchip.readVRMS(1));
-  } else {
-    if (currPage == 0) {
-      display.printf("RMS values");
-      temp = ACSchip.readVRMS(1);
-      if (temp < 1)
-        display.printf("Vrms:\n%.2f mV\n", temp * 1000.0F);
-      else
-        display.printf("Vrms:\n%.2f V\n", temp);
-      temp = ACSchip.readIRMS(1);
-      if (temp < 1)
-        display.printf("Irms:\n%.2f mA\n", temp * 1000.0F);
-      else
-        display.printf("Irms:\n%.2f A\n", temp);
-
-      display.printf("Frequency:\n%.2f Hz", pwr_f);
-    } else if (currPage == 1) {
-
-      display.printf("Harm. Dist. (V)\n");
-      display.printf("THD: %.2f %%\n", thd_v);
-      if (grouping_en) {
-        display.printf("THDG: %.2f\n", thdg_v);
-        display.printf("THDSG: %.2f\n", thdsg_v);
-      }
-    } else if (currPage == 2) {
-      display.printf("Harm. Dist. (I)\n");
-      display.printf("THD: \n%.2f %%\n", thd_i);
-      if (grouping_en) {
-        display.printf("THDG: \n%.2f\n", thdg_i);
-        display.printf("THDSG: \n%.2f\n", thdsg_i);
-      }
-    } else if (currPage == 3) {
-
-      display.printf("Act. Power \n%.2f W\n", ACSchip.readPACTIVE(1) * MAXPOWER);
-      display.printf("P-Factor: \n%.2f\n", ACSchip.readPOWERFACTOR() * distortion_factor);
-      display.printf("Phase Angle\n: %.2fdeg\n", phaseangle);
-    }
+    display.printf("Voltage \ntoo low:\n%2f", ACSchip.readVRMS(0));
+    display.display();
+    return;
   }
+  if (currPage == 0) {
+    SerialUSB1.println("Display voltage");
+    display.printf("Voltage\n");
+    temp = ACSchip.readVRMS(1);
+    if (temp < 1)
+      display.printf("Vrms:\n%.2f mV\n", temp * 1000.0F);
+    else
+      display.printf("Vrms:\n%.2f V\n", temp);
+  } else if (currPage == DISP_CURRENT) {
+    display.printf("Current\n");
+    temp = ACSchip.readIRMS(1);
+    if (temp < 1)
+      display.printf("Irms:\n%.2f mA\n", temp * 1000.0F);
+    else
+      display.printf("Irms:\n%.2f A\n", temp);
+  } else if (currPage == DISP_THD_V) {
+
+    display.printf("Harmonics(V)\n");
+    display.printf("THD:\n%.2f %%\n", thd_v);
+    if (grouping_en) {
+      display.printf("THDG: \n%.2f%%\n", thdg_v);
+      display.printf("THDSG: \n%.2f%%\n", thdsg_v);
+    }
+  } else if (currPage == DISP_THD_I) {
+    display.printf("Harmonics(I)\n");
+    display.printf("THD:\n%.2f%%\n", thd_i);
+    if (grouping_en) {
+      display.printf("THDG:\n%.2f%%\n", thdg_i);
+      display.printf("THDSG:\n%.2f%%\n", thdsg_i);
+    }
+  } else if (currPage == DISP_POWER) {
+
+    display.printf("Act. Power \n%.2f W\n", ACSchip.readPACTIVE(1) * MAXPOWER);
+    display.printf("P-Factor: \n%.2f\n", ACSchip.readPOWERFACTOR() * distortion_factor);
+    display.printf("Phase Angle\n: %.2fdeg\n", phaseangle);
+  }
+
   display.display();
   #endif
 }
