@@ -158,7 +158,7 @@ class SerialBus:
         req = 'ea<' + str(adr) + '>'
         self.writeString(req)
         val = self.readLine()
-        return val
+        return int(val)
 
     def readLine(self, dec: str = 'utf-8') -> str:
         """Reads a line from the serial bus.

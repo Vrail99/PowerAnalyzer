@@ -23,6 +23,7 @@ SOFTWARE.
 
 import tkinter as tk
 from tkinter import ttk
+from registerDefs import *
 import utils
 import time
 
@@ -47,6 +48,12 @@ class SettingsPage(ttk.Frame):
         self.writeAdress = tk.StringVar()
         self.sBus = controller.getSerialBus()
         self.EEPROMDict = {}
+
+        self.EEPROMDict2 = {"0x0B": reg0x0B(0),
+                            "0x0C": reg0x0C(0),
+                            "0x0D": reg0x0D(0),
+                            "0x0E": reg0x0E(0)
+                            }
 
         self.init = False  # Is the EEPROM initialized?
         self._guiSetup()

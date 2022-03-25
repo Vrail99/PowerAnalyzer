@@ -41,7 +41,7 @@ SOFTWARE.
 //#define DEBUG
 
 //Uncomment for SD init
-#define INIT_SDCARD
+//#define INIT_SDCARD
 
 //Uncomment for Display init
 #define INIT_DISP
@@ -86,6 +86,7 @@ Adafruit_SSD1327 display(128, 128, &Wire, OLED_RST, 1000000);
 
 //Touch Sensor instance
 CAP1293 touchSensor;
+volatile boolean touchHappened = false;
 
 //SD CARD
 
@@ -179,8 +180,6 @@ uint32_t wdTimeout = 30000; //ms
 
 void checkCallback() {}
 
-volatile boolean touchHappened = false;
-
 //Touch-IRQ
 void touch_IRQ() {
   touchHappened = true;
@@ -188,13 +187,23 @@ void touch_IRQ() {
 
 //Touch-Input handler
 void touchHandler() {
+  if (computerConnected)
+    return;
   uint8_t touchMode = touchSensor.isLeftOrRightTouched(); //0: right, 1: left
-  if (touchMode == 0 && currPage < NO_OF_PAGES)
+  if (touchMode == 0 && currPage < NO_OF_PAGES) {
     currPage++;
-  else if (touchMode == 1 && currPage > 0)
+  } else if (touchMode == 1 && currPage > 0)
     currPage--;
 
   touchSensor.clearInterrupt();
+
+  if (currPage == DISP_FFT_CURRENT || DISP_FFT_VOLT) {
+    calcFFT = true;
+    startSamplingFFT();
+  } else {
+    calcFFT = false;
+    stopSampling();
+  }
   touchHappened = false;
 }
 
@@ -288,7 +297,7 @@ void setup() {
 
 
   //End of Init
-  }
+}
 
 void loop() {
   newTime = millis(); //Get current millis for timing
@@ -355,6 +364,9 @@ void loop() {
 
   //Update Display with a fixed timing only
   if (newTime > (displayTime + DISPLAY_UPD_RATE)) {
+    #ifdef DEBUG
+    SerialUSB1.println("Updating Display");
+    #endif
     updateDisplay();
     displayTime = newTime;
     detectVoltage();
@@ -445,6 +457,7 @@ void readSingleEEPROM() {
   uint32_t mask = strtoul(endPointer, &endPointer, 16);
   uint8_t pos = strtoul(endPointer, NULL, 10);
 
+
   uint32_t data = ACSchip.readEEPROM(adr, mask, pos);
   #ifdef DEBUG
   SerialUSB1.printf("Reading Adr %u, Mask %u, on pos %u\n Data: %u\n", adr, mask, pos, data);
@@ -525,8 +538,8 @@ void readAddress() {
 
   uint32_t data = ACSchip.readReg(adr);
   #ifdef DEBUG
-  SerialUSB1.printf("Reading Adress: %u, value: %u\n", adr, data);
   #endif
+  SerialUSB1.printf("Reading Adress: %u, value: %u\n", adr, data);
   Serial.printf("%u\n", data);
   Serial.send_now();
 }
@@ -763,14 +776,16 @@ void detectVoltage() {
   float tmp = ACSchip.readVRMS(0);
   if (tmp > 100) //At least 10V RMS voltage
   {
-    calcFFT = true;
-    startSamplingFFT();
+    if (currPage == DISP_FFT_CURRENT || DISP_FFT_VOLT) {
+      calcFFT = true;
+      startSamplingFFT();
+    }
     voltage_detected = true;
     #ifdef DEBUG
-    SerialUSB1.printf("Voltage Detected: %.2f V_RMS", tmp);
+    //SerialUSB1.printf("Voltage Detected: %.2f V_RMS\n", tmp);
     #endif
   }
-  }
+}
 /*
 Stream vcodes and icodes to Serial. Helper
 */
@@ -987,12 +1002,6 @@ void printDirectory(File dir, int numSpaces) {
     File entry = dir.openNextFile();
     if (!entry) {
       Serial.println("** no more files **");
-      SD.mkdir("fft");
-      SD.mkdir("energy");
-      SD.mkdir("voltage");
-      File dataFile = SD.open("fft/fft_log.txt", FILE_WRITE);
-      dataFile.printf("This is file \n content");
-      dataFile.close();
       break;
     }
     printSpaces(numSpaces);
@@ -1238,18 +1247,19 @@ void updateDisplay() {
     display.display();
     return;
   }
-  if (currPage == 0) {
-    SerialUSB1.println("Display voltage");
+  if (currPage == DISP_VOLT) {
+    ACSchip.activateVoltageAveraging();
     display.printf("Voltage\n");
-    temp = ACSchip.readVRMS(1);
-    if (temp < 1)
+    temp = ACSchip.readVRMS(0);
+    if (temp < 1.0F)
       display.printf("Vrms:\n%.2f mV\n", temp * 1000.0F);
     else
       display.printf("Vrms:\n%.2f V\n", temp);
   } else if (currPage == DISP_CURRENT) {
+    ACSchip.activateCurrentAveraging();
     display.printf("Current\n");
     temp = ACSchip.readIRMS(1);
-    if (temp < 1)
+    if (temp < 1.0F)
       display.printf("Irms:\n%.2f mA\n", temp * 1000.0F);
     else
       display.printf("Irms:\n%.2f A\n", temp);
