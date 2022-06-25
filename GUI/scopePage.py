@@ -440,26 +440,25 @@ class ScopeWindow(tk.Toplevel):
     def _saveWaveform(self):
         """Saves the current waveform to a file"""
         if not self.runCodeThread:
-            file = tkinter.filedialog.asksaveasfile()
-            if (self.showPlots == 0):  # Voltage waveform
-                file.write("Voltage Values\n")
-                for e in self.vcodes:
-                    file.write(str(e)+"\n")
-                file.write("FFT Values\n")
-                for e in self.fftArray:
-                    file.writelines(str(e)+"\n")
-            elif (self.showPlots == 1):  # Current Waveform
-                file.write("Current Values\n")
-                for e in self.icodes:
-                    file.write(str(e) + "\n")
-                file.write("FFT Values\n")
-                for e in self.fftArray:
-                    file.writelines(str(e) + "\n")
-            elif (self.showPlots == 2):  # Both Waves
-                file.write("Voltage;Current\n")
-                for v, i in zip(self.vcodes, self.icodes):
-                    file.write(str(v)+";"+str(i)+"\n")
-            file.close()
+            with tkinter.filedialog.asksaveasfile() as file:
+                if (self.showPlots == 0):  # Voltage waveform
+                    file.write("Voltage Values\n")
+                    for e in self.vcodes:
+                        file.write(str(e)+"\n")
+                    file.write("FFT Values\n")
+                    for e in self.fftArray:
+                        file.writelines(str(e)+"\n")
+                elif (self.showPlots == 1):  # Current Waveform
+                    file.write("Current Values\n")
+                    for e in self.icodes:
+                        file.write(str(e) + "\n")
+                    file.write("FFT Values\n")
+                    for e in self.fftArray:
+                        file.writelines(str(e) + "\n")
+                elif (self.showPlots == 2):  # Both Waves
+                    file.write("Voltage;Current\n")
+                    for v, i in zip(self.vcodes, self.icodes):
+                        file.write(str(v)+";"+str(i)+"\n")
 
     def closeScope(self):
         """Closes the scope view"""

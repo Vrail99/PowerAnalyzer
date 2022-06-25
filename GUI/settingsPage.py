@@ -27,10 +27,11 @@ from registerDefs import *
 import utils
 import time
 
-
 ############################################################################################################################
 ################                        Settings Page Class                                             ########################
 ############################################################################################################################
+
+
 class SettingsPage(ttk.Frame):
     """Settings Page to configure the chip"""
 
@@ -47,6 +48,7 @@ class SettingsPage(ttk.Frame):
         self.name = "Settings"
         self.writeAdress = tk.StringVar()
         self.sBus = controller.getSerialBus()
+
         self.EEPROMDict = {}
 
         self.EEPROMDict2 = {"0x0B": reg0x0B(0),
