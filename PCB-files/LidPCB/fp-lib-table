@@ -1,4 +1,3 @@
 (fp_lib_table
   (lib (name "LidPCB")(type "KiCad")(uri "${KIPRJMOD}/LidPCB.pretty")(options "")(descr ""))
-  (lib (name "IES_Logo")(type "KiCad")(uri "/Users/macbook/Dropbox/TU-Darmstadt/HiWi Job/IES_Logo.pretty")(options "")(descr ""))
 )

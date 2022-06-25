@@ -365,7 +365,7 @@
       "gencad": "",
       "idf": "",
       "netlist": "",
-      "specctra_dsn": "",
+      "specctra_dsn": "SDshield.dsn",
       "step": "",
       "vrml": ""
     },
