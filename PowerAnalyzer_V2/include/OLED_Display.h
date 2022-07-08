@@ -22,4 +22,6 @@ enum display_pages {
     DISP_FFT_CURRENT = 6
 };
 
+const char* optionNames[MENU_OPTIONS] = { "V_RMS", "I_RMS", "PWR","THD","PWR_FAC","END" };
+
 #endif

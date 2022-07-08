@@ -245,7 +245,11 @@ void touchHandler_DataLogging() {
   if (multitouch) { //Both buttons pressed at the same time
     switch (menuOption) {
     case 0: {SerialUSB1.println("Menu0 chosen"); break;}
-    case 1: {dataLogging = false; SerialUSB1.println("Exit DataLogging"); break;}
+    case 1: {SerialUSB1.println("Menu1 chosen"); break;}
+    case 2: {SerialUSB1.println("Menu2 chosen"); break;}
+    case 3: {SerialUSB1.println("Menu3 chosen"); break;}
+    case 4: {SerialUSB1.println("Menu4 chosen"); break;}
+    case 5: {dataLogging = false; SerialUSB1.println("Exit DataLogging"); break;}
     }
   } else {
     uint8_t touchMode = touchSensor.isLeftOrRightTouched(); //0: right, 1: left
@@ -1301,30 +1305,46 @@ void displayDefault() {
     display.display();
     return;
   } else if (currPage == DISP_THD_V) {
+    if (!voltage_detected) {
+      display.printf("Voltage \ntoo low:\n%2f", ACSchip.readVRMS(1));
+    } else {
+      if (currPage == 0) {
+        display.printf("RMS values");
+        temp = ACSchip.readVRMS(1);
+        if (temp < 1)
+          display.printf("Vrms:\n%.2f mV\n", temp * 1000.0F);
+        else
+          display.printf("Vrms:\n%.2f V\n", temp);
+        temp = ACSchip.readIRMS(1);
+        if (temp < 1)
+          display.printf("Irms:\n%.2f mA\n", temp * 1000.0F);
+        else
+          display.printf("Irms:\n%.2f A\n", temp);
 
-    display.printf("Harmonics(V)\n");
-    display.printf("THD:\n%.2f %%\n", thd_v);
-    if (grouping_en) {
-      display.printf("THDG: \n%.2f%%\n", thdg_v);
-      display.printf("THDSG: \n%.2f%%\n", thdsg_v);
-    }
-  } else if (currPage == DISP_THD_I) {
-    display.printf("Harmonics(I)\n");
-    display.printf("THD:\n%.2f%%\n", thd_i);
-    if (grouping_en) {
-      display.printf("THDG:\n%.2f%%\n", thdg_i);
-      display.printf("THDSG:\n%.2f%%\n", thdsg_i);
-    }
-  } else if (currPage == DISP_POWER) {
+        display.printf("Harmonics(V)\n");
+        display.printf("THD:\n%.2f %%\n", thd_v);
+        if (grouping_en) {
+          display.printf("THDG: \n%.2f%%\n", thdg_v);
+          display.printf("THDSG: \n%.2f%%\n", thdsg_v);
+        }
+      } else if (currPage == DISP_THD_I) {
+        display.printf("Harmonics(I)\n");
+        display.printf("THD:\n%.2f%%\n", thd_i);
+        if (grouping_en) {
+          display.printf("THDG:\n%.2f%%\n", thdg_i);
+          display.printf("THDSG:\n%.2f%%\n", thdsg_i);
+        }
+      } else if (currPage == DISP_POWER) {
 
-    display.printf("Act. Power \n%.2f W\n", ACSchip.readPACTIVE(1) * MAXPOWER);
-    display.printf("P-Factor: \n%.2f\n", ACSchip.readPOWERFACTOR() * distortion_factor);
-    display.printf("Phase Angle\n: %.2fdeg\n", phaseangle);
+        display.printf("Act. Power \n%.2f W\n", ACSchip.readPACTIVE(1) * MAXPOWER);
+        display.printf("P-Factor: \n%.2f\n", ACSchip.readPOWERFACTOR() * distortion_factor);
+        display.printf("Phase Angle\n: %.2fdeg\n", phaseangle);
+      }
+      display.display();
+      #endif
+    }
   }
-  display.display();
-  #endif
 }
-
 void displayFFT() {
   #ifdef INIT_DISP
   uint32_t starttime = micros();
@@ -1355,7 +1375,7 @@ void displayDataLogMenu() {
   for (uint8_t i = 0; i < MENU_OPTIONS; i++) {
     if (menuOption == i)
       display.print(">");
-    display.printf("opt. %u\n", i + 1);
+    display.printf("%s\n", optionNames[i]);
   }
   display.display();
   #endif
