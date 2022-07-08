@@ -37,13 +37,13 @@ SOFTWARE.
 #include "CAP1293.h"
 
 //Uncomment for Debug messages on Serial Port 3
-#define DEBUG
+//#define DEBUG
 
 //Uncomment for SD init
-#define INIT_SDCARD
+//#define INIT_SDCARD
 
 //Uncomment for Display init
-//#define INIT_DISP
+#define INIT_DISP
 
 //Uncomment for Touch-Sensor init
 #define INIT_TOUCH
@@ -1322,9 +1322,6 @@ void displayDefault() {
     display.printf("Phase Angle\n: %.2fdeg\n", phaseangle);
   }
   display.display();
-  #ifdef DEBUG
-  SerialUSB1.printf("Display update Time: %u\n", micros() - starttime);
-  #endif
   #endif
 }
 
@@ -1360,8 +1357,6 @@ void displayDataLogMenu() {
       display.print(">");
     display.printf("opt. %u\n", i + 1);
   }
-  //display.drawLine(0, (menuOption + 2) * 10, DISP_WIDTH, (menuOption + 2) * 10, SSD1327_WHITE);
-  //display.drawFastHLine(0, (menuOption + 2) * 10, DISP_WIDTH, SSD1327_WHITE);
   display.display();
   #endif
 }
