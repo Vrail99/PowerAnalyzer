@@ -36,6 +36,8 @@ SOFTWARE.
 #include "Watchdog_t4.h" //Watchdog Library for reset on error
 #include "CAP1293.h"
 
+#include "harmonicCalculations.h"
+
 //Uncomment for Debug messages on Serial Port 3
 //#define DEBUG
 
@@ -376,7 +378,7 @@ void loop() {
       arm_cfft_radix4_f32(&fftInstance, vSamps);     //In-Place FFT
       float angle_v = atan2(vSamps[21], vSamps[20]); //Angle from pure spectrum
       arm_cmplx_mag_f32(vSamps, Mags, FFTLEN);       //Calculate Magnitudes
-      thd_v = calcTHD(17);                           //Calculate Total Harmonic Distortion
+      thd_v = calcTHD(Mags, 17, binSize);                           //Calculate Total Harmonic Distortion
       if (grouping_en)                               //If grouping enabled, calculate Harmonic Groups
       {
         float fgroups[17] = { 0 };
@@ -398,7 +400,7 @@ void loop() {
       //tmp = ConvertUnsignedFixedPoint(tmp, 15, 17);
       distortion_factor = (tmp / base_mag_i);
       //SerialUSB1.printf("Dist.-fact:\n Base:%f\n irms:%f\n dist_fact:%f\n", base_mag_i, tmp, distortion_factor);
-      thd_i = calcTHD(17);
+      thd_i = calcTHD(Mags, 17, binSize);
       if (grouping_en) //If grouping enabled, calculate Harmonic Groups
       {
         float fgroups[17] = { 0 };
@@ -461,11 +463,11 @@ int detectCurrentZC(uint8_t orient) {
     float currdata = ACSchip.readICODE();//readICodes();
     while (currdata < zcd_thresh) {
       currdata = ACSchip.readICODE();//readICodes();
-    }
-    return 1;
   }
-  return 0;
+    return 1;
 }
+  return 0;
+  }
 
 uint32_t getMaxValueIndex(float values[], uint32_t arrlen) {
   uint32_t maxIndex = 0;
@@ -1106,60 +1108,6 @@ void toCalibrationMode() {
   updateDisplay();
 }
 
-//Conversion helpers
-/*
- * Convert an unsigned bitfield which is right justified, into a floating point number
- *
- *    data        - the bitfield to be converted
- *    binaryPoint - the binary point (the bit to the left of the binary point)
- *    width       - the width of the bitfield
- *    returns     - the floating point number
- */
-float ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width) {
-  uint32_t mask;
-
-  if (width == 32) {
-    mask = 0xFFFFFFFF;
-  } else {
-    mask = (1UL << width) - 1UL;
-  }
-
-  return (float)(inputValue & mask) / (float)(1L << binaryPoint);
-}
-
-/*
- * Convert a signed bitfield which is right justified, into a floating point number
- *
- *    data        - the bitfield to be sign extended then converted
- *    binaryPoint - the binary point (the bit to the left of the binary point)
- *    width       - the width of the bitfield
- *    returns     - the floating point number
- */
-float ConvertSignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width) {
-  int32_t signedValue = SignExtendBitfield(inputValue, width);
-  return (float)signedValue / (float)(1L << binaryPoint);
-}
-
-/*
- * Sign extend a bitfield which if right justified
- *
- *    data        - the bitfield to be sign extended
- *    width       - the width of the bitfield
- *    returns     - the sign extended bitfield
- */
-int32_t SignExtendBitfield(uint32_t data, uint16_t width) {
-  // If the bitfield is the width of the variable, don't bother trying to sign extend (it already is)
-  if (width == 32) {
-    return (int32_t)data;
-  }
-
-  int32_t x = (int32_t)data;
-  int32_t mask = 1L << (width - 1);
-
-  x = x & ((1 << width) - 1); // make sure the upper bits are zero
-
-  return (int32_t)((x ^ mask) - mask);
-}
 
 void timeSync() {
   unsigned long pctime;
@@ -1176,12 +1124,6 @@ void timeSync() {
     display.display();
     connectComputer(computerConnected);
   }
-}
-
-/* prints the current time on the display
-*/
-void printTime() {
-  display.printf("%02d:%02d:%02d\n", hour(), minute(), second());
 }
 
 void print_time_in_min_sec(uint32_t ms) {
@@ -1206,23 +1148,9 @@ void sendCalibration() {
   SerialUSB1.println("Sent Calibration");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Calculation Functions
-////////////////////////////////////////////////////////////////////////////////
 
-float calcTHD(uint8_t order) {
-  uint32_t s = 50 / binSize; //50Hz base frequency
-  float thd = 0;
-  float base = Mags[s];
-  for (uint32_t i = s * 2; i < order * s; i += s) {
-    thd += pow(Mags[i] / base, 2);
-  }
-  thd = sqrt(thd) * 100;
 
-  return thd;
-}
-
-float calcTHDG(float frequencies[], float output[], int order) {
+float calcTHDG_old(float frequencies[], float output[], int order) {
   float groupvalue = 0;
   for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
   {
@@ -1245,15 +1173,15 @@ float calcTHDG(float frequencies[], float output[], int order) {
   thdg = sqrt(thdg) * 100;
   return thdg;
 }
-float calcTHDSG(float frequencies[], float output[], int order) {
+float calcTHDSG_old(float* frequencies, float* output, int order) {
   for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
   {
     float sumvalue = 0;
     for (int k = -1; k < 2; k++) //Add neighbor values
     {
-      sumvalue += pow(frequencies[i * 10 + k], 2);
+      sumvalue += powf(frequencies[i * 10 + k], 2);
     }
-    float result = sqrt(sumvalue);
+    float result = sqrtf(sumvalue);
     output[i] = result;
   }
   //Calculate THDSG
@@ -1262,7 +1190,7 @@ float calcTHDSG(float frequencies[], float output[], int order) {
   for (uint8_t i = 2; i <= order; i++) {
     thdsg += pow(output[i] / base, 2);
   }
-  thdsg = sqrt(thdsg) * 100;
+  thdsg = sqrtf(thdsg) * 100.0;
   return thdsg;
 }
 
@@ -1347,7 +1275,6 @@ void displayDefault() {
 }
 void displayFFT() {
   #ifdef INIT_DISP
-  uint32_t starttime = micros();
   display.clearDisplay();
   display.setCursor(0, 0);
   if (currPage == DISP_FFT_VOLT)
