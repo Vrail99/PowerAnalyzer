@@ -70,6 +70,8 @@ SOFTWARE.
 //Touch-Controller
 uint8_t currPage = 0;
 uint8_t menuOption = 0;
+extern optionNames;
+//const char* optionNames[MENU_OPTIONS] = { "V_RMS", "I_RMS", "PWR","THD","PWR_FAC","END" };
 
 #define ACS_SPI_SPEED 10000000 //SPI Speed setting for the ACS Chip (10 Mhz)
 
@@ -252,8 +254,8 @@ void touchHandler_DataLogging() {
     case 3: {SerialUSB1.println("Menu3 chosen"); break;}
     case 4: {SerialUSB1.println("Menu4 chosen"); break;}
     case 5: {dataLogging = false; SerialUSB1.println("Exit DataLogging"); break;}
-    }
-  } else {
+  }
+} else {
     uint8_t touchMode = touchSensor.isLeftOrRightTouched(); //0: right, 1: left
     if (touchMode == 0 && menuOption < MENU_OPTIONS) {
       menuOption++;
@@ -367,14 +369,14 @@ void loop() {
       for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
         Serial.printf("%u\n", iCodeBuffer[i]);
       startSamplingPC();
-    } else if (runmode == 3) //Transmit alls current and voltage samples
-    {
-      for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
-        Serial.printf("%u,%u\n", vCodeBuffer[i], iCodeBuffer[i]);
-      startSamplingPC();
-    }
-    //Calculate FFT and the harmonic distortion
-    else if (calcFFT) {
+  } else if (runmode == 3) //Transmit alls current and voltage samples
+  {
+    for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
+      Serial.printf("%u,%u\n", vCodeBuffer[i], iCodeBuffer[i]);
+    startSamplingPC();
+  }
+  //Calculate FFT and the harmonic distortion
+  else if (calcFFT) {
       arm_cfft_radix4_f32(&fftInstance, vSamps);     //In-Place FFT
       float angle_v = atan2(vSamps[21], vSamps[20]); //Angle from pure spectrum
       arm_cmplx_mag_f32(vSamps, Mags, FFTLEN);       //Calculate Magnitudes
@@ -387,7 +389,7 @@ void loop() {
       }
 
       if (currPage == DISP_FFT_VOLT)
-        displayFFT();
+        displayFFT(&display, Mags, currPage);
 
       //FFT for Current samples
       arm_cfft_radix4_f32(&fftInstance, iSamps); //In-Place FFT
@@ -409,12 +411,12 @@ void loop() {
       }
 
       if (currPage == DISP_FFT_CURRENT)
-        displayFFT();
+        displayFFT(&display, Mags, currPage);
 
       startSamplingFFT();
 
     }
-  }
+}
 
   //Update Display with a fixed timing only
   if (newTime > (displayTime + DISPLAY_UPD_RATE)) {
@@ -463,13 +465,13 @@ int detectCurrentZC(uint8_t orient) {
     float currdata = ACSchip.readICODE();//readICodes();
     while (currdata < zcd_thresh) {
       currdata = ACSchip.readICODE();//readICodes();
-  }
+    }
     return 1;
 }
   return 0;
-  }
+}
 
-uint32_t getMaxValueIndex(float values[], uint32_t arrlen) {
+uint32_t getMaxValueIndex_old(float values[], uint32_t arrlen) {
   uint32_t maxIndex = 0;
   float maxVal = values[maxIndex];
 
@@ -1022,41 +1024,13 @@ void getCommand() {
         Serial.printf("%u\n", inCalibration);
         toCalibrationMode();
       } else if (c2 == 'f') {
-        digitalWrite(ACS_EN, LOW);
+        /*digitalWrite(ACS_EN, LOW);
         delay(200);
         File root = SD.open("/");
         printDirectory(root, 0);
-        digitalWrite(ACS_EN, HIGH);
+        digitalWrite(ACS_EN, HIGH);*/
       }
     }
-  }
-}
-
-void printDirectory(File dir, int numSpaces) {
-  while (true) {
-    File entry = dir.openNextFile();
-    if (!entry) {
-      Serial.println("** no more files **");
-      break;
-    }
-    printSpaces(numSpaces);
-    Serial.print(entry.name());
-    if (entry.isDirectory()) {
-      Serial.println("/");
-      printDirectory(entry, numSpaces + 2);
-    } else {
-      // files have sizes, directories do not
-      printSpaces(48 - numSpaces - strlen(entry.name()));
-      Serial.print("  ");
-      Serial.println(entry.size(), DEC);
-    }
-    entry.close();
-  }
-}
-
-void printSpaces(int num) {
-  for (int i = 0; i < num; i++) {
-    Serial.print(" ");
   }
 }
 
@@ -1148,162 +1122,17 @@ void sendCalibration() {
   SerialUSB1.println("Sent Calibration");
 }
 
-
-
-float calcTHDG_old(float frequencies[], float output[], int order) {
-  float groupvalue = 0;
-  for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
-  {
-    groupvalue = pow(frequencies[i * 10 - 5], 2) / 2; //Add 1/2*Value offset by 5 to the left
-    float sumvalue = 0;
-    for (int k = -4; k < 5; k++) //Add all values from -4 to 4 around the harmonic order
-    {
-      sumvalue += pow(frequencies[i * 10 + k], 2);
-    }
-    groupvalue += sumvalue + pow(Mags[i * 10 + 5], 2) / 2; //Add 1/2*Value offset by 5 to the right
-    float result = sqrt(groupvalue);
-    output[i] = result; //Save it in output array
-  }
-  //Calculate THDG
-  float thdg = 0;
-  float base = output[1];
-  for (uint8_t i = 2; i <= order; i++) {
-    thdg += pow(output[i] / base, 2);
-  }
-  thdg = sqrt(thdg) * 100;
-  return thdg;
-}
-float calcTHDSG_old(float* frequencies, float* output, int order) {
-  for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
-  {
-    float sumvalue = 0;
-    for (int k = -1; k < 2; k++) //Add neighbor values
-    {
-      sumvalue += powf(frequencies[i * 10 + k], 2);
-    }
-    float result = sqrtf(sumvalue);
-    output[i] = result;
-  }
-  //Calculate THDSG
-  float thdsg = 0;
-  float base = output[1];
-  for (uint8_t i = 2; i <= order; i++) {
-    thdsg += pow(output[i] / base, 2);
-  }
-  thdsg = sqrtf(thdsg) * 100.0;
-  return thdsg;
-}
-
 /*
   Updates the Display with values
 */
 void updateDisplay() {
+  #ifdef INIT_DISP
   if (currPage == DISP_FFT_VOLT || currPage == DISP_FFT_CURRENT || computerConnected)
     return;
 
   if (dataLogging)
-    displayDataLogMenu();
+    displayDataLogMenu(&display, menuOption, optionNames);
   else
-    displayDefault();
-
-}
-
-void displayDefault() {
-  #ifdef INIT_DISP
-  float temp;
-  display.clearDisplay();
-  display.setCursor(0, 0); //Cursor Position top-left
-  //Updates to the display
-  if (currPage == DISP_CURRENT) {
-    display.printf("Current\n");
-    temp = ACSchip.readIRMS(1);
-    if (temp < 1.0F)
-      display.printf("Irms:\n%.2f mA\n", temp * 1000.0F);
-    else
-      display.printf("Irms:\n%.2f A\n", temp);
-  } else if (currPage == DISP_VOLT) {
-    display.printf("Voltage\n");
-    temp = ACSchip.readVRMS(0);
-    if (temp < 1.0F)
-      display.printf("Vrms:\n%.2f mV\n", temp * 1000.0F);
-    else
-      display.printf("Vrms:\n%.2f V\n", temp);
-  } else if (!voltage_detected) {
-    display.printf("Voltage \ntoo low:\n%2f", ACSchip.readVRMS(0));
-    display.display();
-    return;
-  } else if (currPage == DISP_THD_V) {
-    if (!voltage_detected) {
-      display.printf("Voltage \ntoo low:\n%2f", ACSchip.readVRMS(1));
-    } else {
-      if (currPage == 0) {
-        display.printf("RMS values");
-        temp = ACSchip.readVRMS(1);
-        if (temp < 1)
-          display.printf("Vrms:\n%.2f mV\n", temp * 1000.0F);
-        else
-          display.printf("Vrms:\n%.2f V\n", temp);
-        temp = ACSchip.readIRMS(1);
-        if (temp < 1)
-          display.printf("Irms:\n%.2f mA\n", temp * 1000.0F);
-        else
-          display.printf("Irms:\n%.2f A\n", temp);
-
-        display.printf("Harmonics(V)\n");
-        display.printf("THD:\n%.2f %%\n", thd_v);
-        if (grouping_en) {
-          display.printf("THDG: \n%.2f%%\n", thdg_v);
-          display.printf("THDSG: \n%.2f%%\n", thdsg_v);
-        }
-      } else if (currPage == DISP_THD_I) {
-        display.printf("Harmonics(I)\n");
-        display.printf("THD:\n%.2f%%\n", thd_i);
-        if (grouping_en) {
-          display.printf("THDG:\n%.2f%%\n", thdg_i);
-          display.printf("THDSG:\n%.2f%%\n", thdsg_i);
-        }
-      } else if (currPage == DISP_POWER) {
-
-        display.printf("Act. Power \n%.2f W\n", ACSchip.readPACTIVE(1) * MAXPOWER);
-        display.printf("P-Factor: \n%.2f\n", ACSchip.readPOWERFACTOR() * distortion_factor);
-        display.printf("Phase Angle\n: %.2fdeg\n", phaseangle);
-      }
-      display.display();
-      #endif
-    }
-  }
-}
-void displayFFT() {
-  #ifdef INIT_DISP
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  if (currPage == DISP_FFT_VOLT)
-    display.print("Voltage FFT 0-640 Hz");
-  else
-    display.print("Current-FFT 0-640 Hz");
-  //Number of Magnitudes: 4096, with binSize = 5
-  float maxMag = Mags[getMaxValueIndex(Mags, 4096)];
-  float pix_per_volt = (128 - 20) / maxMag;
-  for (int i = 0; i < 128; i++) {
-    uint16_t mag = round(Mags[i] * pix_per_volt); //Rounded value
-    display.drawLine(i, DISP_HEIGHT, i, DISP_WIDTH - 10 - mag, SSD1327_WHITE);
-  }
-  display.display();
-  #ifdef DEBUG
-  SerialUSB1.printf("Display update Time: %u\n", micros() - starttime);
-  #endif
-  #endif
-}
-
-void displayDataLogMenu() {
-  #ifdef INIT_DISP
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  for (uint8_t i = 0; i < MENU_OPTIONS; i++) {
-    if (menuOption == i)
-      display.print(">");
-    display.printf("%s\n", optionNames[i]);
-  }
-  display.display();
+    displayDefault(&display, &ACSchip, currPage);
   #endif
 }
