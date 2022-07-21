@@ -19,6 +19,10 @@ void displayDefault(Adafruit_SSD1327* display, ACS71020* ACSchip, uint8_t currPa
             display->printf("Vrms:\n%.2f mV\n", temp * 1000.0F);
         else
             display->printf("Vrms:\n%.2f V\n", temp);
+        temp = ACSchip->readPACTIVE(1) * 5490.0;
+        display->printf("Power\n%.2f W\n", temp);
+
+
     } /*else if (!voltage_detected) {
         display->printf("Voltage \ntoo low:\n%2f", ACSchip->readVRMS(0));
         display->display();

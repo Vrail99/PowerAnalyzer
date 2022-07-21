@@ -35,6 +35,7 @@ SOFTWARE.
 #include "OLED_Display.h"     //Display Library
 #include "Watchdog_t4.h" //Watchdog Library for reset on error
 #include "CAP1293.h"
+#include "PA_DataLogger.h"
 
 #include "harmonicCalculations.h"
 
@@ -70,8 +71,7 @@ SOFTWARE.
 //Touch-Controller
 uint8_t currPage = 0;
 uint8_t menuOption = 0;
-extern optionNames;
-//const char* optionNames[MENU_OPTIONS] = { "V_RMS", "I_RMS", "PWR","THD","PWR_FAC","END" };
+const char* optionNames[MENU_OPTIONS] = { "V_RMS", "I_RMS", "PWR","THD","PWR_FAC","END" };
 
 #define ACS_SPI_SPEED 10000000 //SPI Speed setting for the ACS Chip (10 Mhz)
 
@@ -79,8 +79,8 @@ extern optionNames;
 #define IRMS_cal_address VRMS_cal_address + 4
 
 //Values predefined if EEPROM-read error
-float conv_factor_VRMS = 8.384 * pow(10, -6);
-float conv_factor_IRMS = 1.015 * pow(10, -3);
+float conv_factor_VRMS = 8.384 * powf(10, -6);
+float conv_factor_IRMS = 1.015 * powf(10, -3);
 
 //Creation of a Chip instance
 ACS71020 ACSchip(ACS_SPI_SPEED, ACS_CS, ACS_EN);
@@ -112,15 +112,15 @@ const uint32_t MAXPOWER = MAXVOLT * MAXCURR; //For Power Calculations
 char receivedChars[MAX_RECEIVEABLE];
 
 //Frequency and FFT Defines
-const uint32_t FFTSAMPLEFREQ = 20408;
-const uint32_t FFTSAMPLERATE = 49;      //Samplerate in Microseconds
-const uint32_t FFTREALSAMPLES = 4082;   // 200ms Sampling time with 49 us/Sa ~= 4082 Sa
-const uint32_t FFTLEN = 4096;           //Full FFT length for CMSIS Function
-const uint32_t FFTBUFFLEN = 2 * FFTLEN; //Buffer for CMSIS structure
-const uint32_t binSize = 5;             //FFTSAMPLEFREQ / FFTLEN;
+#define FFTSAMPLEFREQ  20408
+#define FFTSAMPLERATE  49      //Samplerate in Microseconds
+#define FFTREALSAMPLES  4082   // 200ms Sampling time with 49 us/Sa ~= 4082 Sa
+#define FFTLEN  4096           //Full FFT length for CMSIS Function
+#define FFTBUFFLEN  2 * FFTLEN //Buffer for CMSIS structure
+#define binSize 5             //FFTSAMPLEFREQ / FFTLEN;
 //PC
-const uint32_t SAMPLERATE = 32;
-const uint32_t SAMPBUFFLEN = 6250;
+#define SAMPLERATE 32
+#define SAMPBUFFLEN 6250
 
 const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013
 
@@ -254,8 +254,8 @@ void touchHandler_DataLogging() {
     case 3: {SerialUSB1.println("Menu3 chosen"); break;}
     case 4: {SerialUSB1.println("Menu4 chosen"); break;}
     case 5: {dataLogging = false; SerialUSB1.println("Exit DataLogging"); break;}
-  }
-} else {
+    }
+  } else {
     uint8_t touchMode = touchSensor.isLeftOrRightTouched(); //0: right, 1: left
     if (touchMode == 0 && menuOption < MENU_OPTIONS) {
       menuOption++;
@@ -361,22 +361,20 @@ void loop() {
   if (samplingDone) {
     if (runmode == 1) //Transmit all voltage samples
     {
-      for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
-        Serial.printf("%u\n", vCodeBuffer[i]);
+      transmitIntegerSamples(&Serial, vCodeBuffer, SAMPBUFFLEN);
       startSamplingPC();
     } else if (runmode == 2) //Transmit all current samples
     {
-      for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
-        Serial.printf("%u\n", iCodeBuffer[i]);
+      transmitIntegerSamples(&Serial, iCodeBuffer, SAMPBUFFLEN);
       startSamplingPC();
-  } else if (runmode == 3) //Transmit alls current and voltage samples
-  {
-    for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
-      Serial.printf("%u,%u\n", vCodeBuffer[i], iCodeBuffer[i]);
-    startSamplingPC();
-  }
-  //Calculate FFT and the harmonic distortion
-  else if (calcFFT) {
+    } else if (runmode == 3) //Transmit alls current and voltage samples
+    {
+      for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
+        Serial.printf("%u,%u\n", vCodeBuffer[i], iCodeBuffer[i]);
+      startSamplingPC();
+    }
+    //Calculate FFT and the harmonic distortion
+    else if (calcFFT) {
       arm_cfft_radix4_f32(&fftInstance, vSamps);     //In-Place FFT
       float angle_v = atan2(vSamps[21], vSamps[20]); //Angle from pure spectrum
       arm_cmplx_mag_f32(vSamps, Mags, FFTLEN);       //Calculate Magnitudes
@@ -416,7 +414,7 @@ void loop() {
       startSamplingFFT();
 
     }
-}
+  }
 
   //Update Display with a fixed timing only
   if (newTime > (displayTime + DISPLAY_UPD_RATE)) {
@@ -467,8 +465,14 @@ int detectCurrentZC(uint8_t orient) {
       currdata = ACSchip.readICODE();//readICodes();
     }
     return 1;
-}
+  }
   return 0;
+}
+
+void transmitIntegerSamples(usb_serial_class* sBus, uint32_t* samples, uint32_t length) {
+  for (uint32_t i = 0; i < length; i++) {
+    sBus->printf("%u\n");
+  }
 }
 
 uint32_t getMaxValueIndex_old(float values[], uint32_t arrlen) {

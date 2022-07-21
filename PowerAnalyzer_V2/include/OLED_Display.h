@@ -9,7 +9,6 @@
 
 //DataLogging Menug options
 #define MENU_OPTIONS 6
-const char* optionNames[MENU_OPTIONS] = { "V_RMS", "I_RMS", "PWR","THD","PWR_FAC","END" };
 
 #define DISP_HEIGHT 128
 #define DISP_WIDTH 128
