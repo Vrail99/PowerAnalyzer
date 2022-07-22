@@ -1,4 +1,5 @@
 #include "OLED_Display.h"
+#include "harmonicCalculations.h"
 
 void displayDefault(Adafruit_SSD1327* display, ACS71020* ACSchip, uint8_t currPage) {
     float temp;
@@ -98,15 +99,20 @@ void displayDataLogMenu(Adafruit_SSD1327* display, uint8_t menuOption, const cha
     display->display();
 }
 
-uint32_t getMaxValueIndex(float* values, uint32_t arrlen) {
-    uint32_t maxIndex = 0;
-    float maxVal = values[maxIndex];
-
-    for (uint32_t i = 0; i < arrlen; i++) {
-        if (values[i] > maxVal) {
-            maxIndex = i;
-            maxVal = values[i];
-        }
+void print_time_in_min_sec(Adafruit_SSD1327* display, int16_t x, int16_t y, uint32_t ms) {
+    if (ms < 60000) { //60s remaining
+        int secs = (int)(ms / 1000) + 1;
+        display->clearDisplay();
+        display->setCursor(x, y);
+        display->printf("Calibration Mode\n");
+        display->printf("%02d s remaining", secs);
+        display->display();
+    } else {
+        int mins = (int)(ms / 60000);
+        display->clearDisplay();
+        display->setCursor(x, y);
+        display->printf("Calibration Mode\n");
+        display->printf("%02d min remaining", mins);
+        display->display();
     }
-    return maxIndex;
 }

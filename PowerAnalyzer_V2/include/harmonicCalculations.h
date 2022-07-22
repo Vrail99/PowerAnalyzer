@@ -10,5 +10,6 @@ float calcTHDSG(float* frequencies, float* output, int order);
 float ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width);
 float ConvertSignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width);
 int32_t SignExtendBitfield(uint32_t data, uint16_t width);
+uint32_t getMaxValueIndex(float* values, uint32_t arrlen);
 
 #endif

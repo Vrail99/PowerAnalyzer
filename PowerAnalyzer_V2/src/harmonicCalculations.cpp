@@ -116,3 +116,16 @@ int32_t SignExtendBitfield(uint32_t data, uint16_t width) {
 
     return (int32_t)((x ^ mask) - mask);
 }
+
+uint32_t getMaxValueIndex(float* values, uint32_t arrlen) {
+    uint32_t maxIndex = 0;
+    float maxVal = values[maxIndex];
+
+    for (uint32_t i = 0; i < arrlen; i++) {
+        if (values[i] > maxVal) {
+            maxIndex = i;
+            maxVal = values[i];
+        }
+    }
+    return maxIndex;
+}
