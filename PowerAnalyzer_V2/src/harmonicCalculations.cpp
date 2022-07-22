@@ -7,8 +7,9 @@
 
 float calcTHD(float* Magnitudes, uint8_t order, uint32_t binSize) {
     uint32_t s = 50 / binSize; //50Hz base frequency
-    float thd = 0;
+    float thd = 0.0F;
     float base = Magnitudes[s];
+    if (base == 0.0F) return;
     for (uint32_t i = s * 2; i < order * s; i += s) {
         thd += powf(Magnitudes[i] / base, 2);
     }
@@ -21,23 +22,23 @@ float calcTHDG(float* frequencies, float* output, int order) {
     float groupvalue = 0;
     for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
     {
-        groupvalue = pow(frequencies[i * 10 - 5], 2) / 2; //Add 1/2*Value offset by 5 to the left
+        groupvalue = powf(frequencies[i * 10 - 5], 2) / 2.0F; //Add 1/2*Value offset by 5 to the left
         float sumvalue = 0;
         for (int k = -4; k < 5; k++) //Add all values from -4 to 4 around the harmonic order
         {
             sumvalue += powf(frequencies[i * 10 + k], 2);
         }
-        groupvalue += sumvalue + powf(frequencies[i * 10 + 5], 2) / 2; //Add 1/2*Value offset by 5 to the right
-        float result = sqrt(groupvalue);
-        output[i] = result; //Save it in output array
+        groupvalue += sumvalue + powf(frequencies[i * 10 + 5], 2) / 2.0F; //Add 1/2*Value offset by 5 to the right
+        output[i] = sqrtf(groupvalue);; //Save it in output array
     }
     //Calculate THDG
-    float thdg = 0;
+    float thdg = 0.0F;
     float base = output[1];
+    if (base == 0.0F) return;
     for (uint8_t i = 2; i <= order; i++) {
-        thdg += pow(output[i] / base, 2);
+        thdg += powf(output[i] / base, 2);
     }
-    thdg = sqrt(thdg) * 100;
+    thdg = sqrt(thdg) * 100.0;
     return thdg;
 }
 
@@ -55,6 +56,7 @@ float calcTHDSG(float* frequencies, float* output, int order) {
     //Calculate THDSG
     float thdsg = 0;
     float base = output[1];
+    if (base == 0.0F) return;
     for (uint8_t i = 2; i <= order; i++) {
         thdsg += powf(output[i] / base, 2);
     }

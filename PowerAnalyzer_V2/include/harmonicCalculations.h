@@ -3,6 +3,21 @@
 
 #include <Arduino.h>
 
+//Variables for harmonic distortion calculation
+struct PowerQuality {
+    float thd_v; //Total Harmonic Voltage Distortion
+    float thd_i; //Total Harmonic Current Distortion
+    float pwr_f; //Power Frequency
+    float phaseangle;
+    float distortion_factor; //Distortion factor for the pf-calculation
+
+    bool grouping_en;
+    float thdg_v;
+    float thdsg_v;
+    float thdg_i;
+    float thdsg_i;
+};
+
 float calcTHD(float* Magnitudes, uint8_t order, uint32_t binSize);
 float calcTHDG(float* frequencies, float* output, int order);
 float calcTHDSG(float* frequencies, float* output, int order);

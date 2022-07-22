@@ -44,7 +44,7 @@ SOFTWARE.
 //Touch-Controller
 uint8_t currPage = 0;
 uint8_t menuOption = 0;
-const char* optionNames[MENU_OPTIONS] = { "V_RMS", "I_RMS", "PWR","THD","PWR_FAC","END" };
+const char* optionNames[MENU_OPTIONS] = { "V&C RMS", "POWER", "THD", "PWR_FAC", "ENERGY", "END" };
 
 //Values predefined if EEPROM-read error
 float conv_factor_VRMS = 8.384 * powf(10, -6);
@@ -55,6 +55,8 @@ ACS71020 ACSchip(ACS_SPI_SPEED, ACS_CS, ACS_EN);
 
 //Display instance
 Adafruit_SSD1327 display(DISP_WIDTH, DISP_HEIGHT, &Wire, OLED_RST, 1000000);
+
+DataLogger logger(&ACSchip, &SerialUSB1, SD_CS_PIN);
 
 //Touch Sensor instance
 CAP1293 touchSensor;
@@ -100,18 +102,7 @@ float Mags[FFTLEN] = { 0.0 };
 
 float zcd_thresh = 0.2;
 
-//Variables for harmonic distortion calculation
-float thd_v; //Total Harmonic Voltage Distortion
-float thd_i; //Total Harmonic Current Distortion
-float pwr_f; //Power Frequency
-float phaseangle;
-float distortion_factor; //Distortion factor for the pf-calculation
-
-bool grouping_en = true;
-float thdg_v = 0.0F;
-float thdsg_v = 0.0F;
-float thdg_i = 0.0F;
-float thdsg_i = 0.0F;
+struct PowerQuality pwr_qual = { 0 };
 
 bool inCalibration = false;
 uint8_t dataLogging = 0;
@@ -155,31 +146,26 @@ void touchHandler_Default() {
     #endif
   }
   touchSensor.clearInterrupt();
-
+  calcFFT = false;
   switch (currPage) {
   case DISP_FFT_VOLT:
     calcFFT = true;
+    ACSchip.activateVoltageAveraging();
     startSamplingFFT();
     break;
   case DISP_FFT_CURRENT:
     calcFFT = true;
+    ACSchip.activateVoltageAveraging();
     startSamplingFFT();
     break;
   case DISP_VOLT:
-    calcFFT = false;
     ACSchip.activateVoltageAveraging();
     break;
   case DISP_CURRENT:
-    calcFFT = false;
     ACSchip.activateCurrentAveraging();
     break;
-  }
-  if (currPage == DISP_FFT_CURRENT || DISP_FFT_VOLT) {
-    calcFFT = true;
-    startSamplingFFT();
-  } else {
-    calcFFT = false;
-    stopSampling();
+  case DISP_POWER:
+    ACSchip.activateVoltageAveraging();
   }
   touchHappened = false;
 }
@@ -190,7 +176,7 @@ void touchHandler_DataLogging() {
 
   if (multitouch) { //Both buttons pressed at the same time
     switch (menuOption) {
-    case 0: {SerialUSB1.println("Menu0 chosen"); break;}
+    case 0: {logger.Log_RMS_VandC(true); break;}
     case 1: {SerialUSB1.println("Menu1 chosen"); break;}
     case 2: {SerialUSB1.println("Menu2 chosen"); break;}
     case 3: {SerialUSB1.println("Menu3 chosen"); break;}
@@ -229,12 +215,10 @@ void setup() {
     yield();
   }
   #endif
-
   while (!ACSchip.init()) {
     SerialUSB1.println("Unable to init ACS-Chip");
     delay(500);
   }
-
   //Display Initialization
   #ifdef INIT_DISP
   while (!display.begin(0x3D)) {
@@ -287,7 +271,7 @@ void setup() {
   if (fft_err == ARM_MATH_ARGUMENT_ERROR) {
     SerialUSB1.println("FFT Len Error");
     calcFFT = false;
-}
+  }
   delay(100);
 
   //Initialization of timers
@@ -314,18 +298,18 @@ void loop() {
       for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
         Serial.printf("%u,%u\n", vCodeBuffer[i], iCodeBuffer[i]);
       startSamplingPC();
-  }
+    }
     //Calculate FFT and the harmonic distortion
     else if (calcFFT) {
       arm_cfft_radix4_f32(&fftInstance, vSamps);     //In-Place FFT
       float angle_v = atan2(vSamps[21], vSamps[20]); //Angle from pure spectrum
       arm_cmplx_mag_f32(vSamps, Mags, FFTLEN);       //Calculate Magnitudes
-      thd_v = calcTHD(Mags, 17, binSize);                           //Calculate Total Harmonic Distortion
-      if (grouping_en)                               //If grouping enabled, calculate Harmonic Groups
+      pwr_qual.thd_v = calcTHD(Mags, 17, BINSIZE);                           //Calculate Total Harmonic Distortion
+      if (pwr_qual.grouping_en)                               //If grouping enabled, calculate Harmonic Groups
       {
         float fgroups[17] = { 0 };
-        thdg_v = calcTHDG(Mags, fgroups, 17);
-        thdsg_v = calcTHDSG(Mags, fgroups, 17);
+        pwr_qual.thdg_v = calcTHDG(Mags, fgroups, 17);
+        pwr_qual.thdsg_v = calcTHDSG(Mags, fgroups, 17);
       }
 
       if (currPage == DISP_FFT_VOLT)
@@ -334,20 +318,20 @@ void loop() {
       //FFT for Current samples
       arm_cfft_radix4_f32(&fftInstance, iSamps); //In-Place FFT
       float angle_i = atan2(iSamps[21], iSamps[20]);
-      phaseangle = (angle_v - angle_i) * (180 / PI);
+      pwr_qual.phaseangle = (angle_v - angle_i) * (180.0F / PI);
 
       arm_cmplx_mag_f32(iSamps, Mags, FFTLEN);
-      float base_mag_i = Mags[binSize * 2] / (2 * FFTLEN);
+      float base_mag_i = Mags[BINSIZE * 2] / (2 * FFTLEN);
       float tmp = ACSchip.readIRMS(0); // base in a
       //tmp = ConvertUnsignedFixedPoint(tmp, 15, 17);
-      distortion_factor = (tmp / base_mag_i);
+      pwr_qual.distortion_factor = (tmp / base_mag_i);
       //SerialUSB1.printf("Dist.-fact:\n Base:%f\n irms:%f\n dist_fact:%f\n", base_mag_i, tmp, distortion_factor);
-      thd_i = calcTHD(Mags, 17, binSize);
-      if (grouping_en) //If grouping enabled, calculate Harmonic Groups
+      pwr_qual.thd_i = calcTHD(Mags, 17, BINSIZE);
+      if (pwr_qual.grouping_en) //If grouping enabled, calculate Harmonic Groups
       {
         float fgroups[17] = { 0 };
-        thdg_i = calcTHDG(Mags, fgroups, 17);
-        thdsg_i = calcTHDSG(Mags, fgroups, 17);
+        pwr_qual.thdg_i = calcTHDG(Mags, fgroups, 17);
+        pwr_qual.thdsg_i = calcTHDSG(Mags, fgroups, 17);
       }
 
       if (currPage == DISP_FFT_CURRENT)
@@ -356,7 +340,7 @@ void loop() {
       startSamplingFFT();
 
     }
-}
+  }
 
   //Update Display with a fixed timing only
   if (newTime > (displayTime + DISPLAY_UPD_RATE)) {
@@ -387,7 +371,7 @@ void loop() {
     detectVoltage();
     checkTime = newTime;
   }
-  }
+}
 
 //Function to detect Zero Crossings
 int detectCurrentZC(uint8_t orient) {
@@ -537,7 +521,7 @@ void writeAddress() {
 void measureFrequency() {
   //Frequency-Measurement won't work
   if (!voltage_detected) {
-    pwr_f = 0.0F;
+    pwr_qual.pwr_f = 0.0F;
     return;
   }
 
@@ -561,7 +545,7 @@ void measureFrequency() {
   }
   secTime = micros(); //Save the time of the second rising edge
   uint32_t ti = secTime - firstTime;
-  pwr_f = 1.0F / (ti * 1000000.0F); //Convert time to seconds and calculate Frequency
+  pwr_qual.pwr_f = 1.0F / (ti * 1000000.0F); //Convert time to seconds and calculate Frequency
 }
 
 /*
@@ -584,7 +568,7 @@ void calibrateRMS() {
   if (mode == 0) {
     conv_factor_VRMS = converted;
     MCU_write(VRMS_cal_address, conv, false);
-} else {
+  } else {
     conv_factor_IRMS = converted;
     MCU_write(IRMS_cal_address, conv, false);
   }
@@ -896,9 +880,9 @@ void getCommand() {
         readSingleEEPROM(); break;
       case 'a': //Reads the content of a memory address
         readAddress(); break;
-      case 'e': //Reads the MCU-EEPROM and sends the return
+      case 'e': { //Reads the MCU-EEPROM and sends the return
         uint32_t data = MCU_read(0, true);
-        Serial.printf("%u\n", data); break;
+        Serial.printf("%u\n", data); break;}
       case 's': // EEPROM "status"
         sendCalibration(); break;
       }
@@ -1014,6 +998,6 @@ void updateDisplay() {
   if (dataLogging)
     displayDataLogMenu(&display, menuOption, optionNames);
   else
-    displayDefault(&display, &ACSchip, currPage);
+    displayDefault(&display, &ACSchip, currPage, &pwr_qual);
   #endif
 }
