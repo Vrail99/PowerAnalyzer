@@ -30,53 +30,25 @@ SOFTWARE.
 #include <TimeLib.h>          //Time Library for Real-Time Clock
 #include <math.h>
 #include <EEPROM.h>
-#include <SD.h>
-#include "ACS71020.h"         //Include of the Chip-Library
+
+//External Libraries
 #include "OLED_Display.h"     //Display Library
 #include "Watchdog_t4.h" //Watchdog Library for reset on error
 #include "CAP1293.h"
+#include "PA_DataLogger.h"
 
-//Uncomment for Debug messages on Serial Port 3
-//#define DEBUG
+#include "PowerAnalyzer.h"  //Includes ACS-Chip, pin and valuedefines
+#include "harmonicCalculations.h"
 
-//Uncomment for SD init
-//#define INIT_SDCARD
-
-//Uncomment for Display init
-#define INIT_DISP
-
-//Uncomment for Touch-Sensor init
-#define INIT_TOUCH
-
-//Uncomment for voltage detection, useful for off-grid testing
-//#define DETECT_VOLTAGE
-
-//Defines for GPIO
-#define ACS_CS 10              //Chip Select for the ACS Chip, active-low
-#define ACS_EN 9               //enable MISO line, active-high
-
-  //Display
-#define OLED_RST 14 //20
-#define OLED_DC 15  //21
-
-//Touch-Controller Interrupt-Pin (ALERT)
-#define CAP_IRQ 16
-
-//SD-Card CS-Pin
-#define SD_CS_PIN 0
 
 //Touch-Controller
 uint8_t currPage = 0;
 uint8_t menuOption = 0;
-
-#define ACS_SPI_SPEED 10000000 //SPI Speed setting for the ACS Chip (10 Mhz)
-
-#define VRMS_cal_address 0
-#define IRMS_cal_address VRMS_cal_address + 4
+const char* optionNames[MENU_OPTIONS] = { "V&C RMS", "POWER", "THD", "PWR_FAC", "ENERGY", "END" };
 
 //Values predefined if EEPROM-read error
-float conv_factor_VRMS = 8.384 * pow(10, -6);
-float conv_factor_IRMS = 1.015 * pow(10, -3);
+float conv_factor_VRMS = 8.384 * powf(10, -6);
+float conv_factor_IRMS = 1.015 * powf(10, -3);
 
 //Creation of a Chip instance
 ACS71020 ACSchip(ACS_SPI_SPEED, ACS_CS, ACS_EN);
@@ -84,39 +56,15 @@ ACS71020 ACSchip(ACS_SPI_SPEED, ACS_CS, ACS_EN);
 //Display instance
 Adafruit_SSD1327 display(DISP_WIDTH, DISP_HEIGHT, &Wire, OLED_RST, 1000000);
 
+DataLogger logger(&ACSchip, &SerialUSB1, SD_CS_PIN);
+
 //Touch Sensor instance
 CAP1293 touchSensor;
 volatile boolean touchHappened = false;
 
-//SD CARD
-
-// Sd2Card card;
-// SdVolume volume;
-// SdFile root;
-
-////////////////////////////////////////////////////////////////////////////////
-// Constants
-////////////////////////////////////////////////////////////////////////////////
-
-//Characteristics
-const uint32_t MAXVOLT = 366;             //Voltage divider at Input
-const uint32_t MAXCURR = 15;                //Fixed for 5V SPI Version of the chip
-const uint32_t MAXPOWER = MAXVOLT * MAXCURR; //For Power Calculations
-
 //Character arrays for input commands
 #define MAX_RECEIVEABLE 32 // Number of characters that can be read
 char receivedChars[MAX_RECEIVEABLE];
-
-//Frequency and FFT Defines
-const uint32_t FFTSAMPLEFREQ = 20408;
-const uint32_t FFTSAMPLERATE = 49;      //Samplerate in Microseconds
-const uint32_t FFTREALSAMPLES = 4082;   // 200ms Sampling time with 49 us/Sa ~= 4082 Sa
-const uint32_t FFTLEN = 4096;           //Full FFT length for CMSIS Function
-const uint32_t FFTBUFFLEN = 2 * FFTLEN; //Buffer for CMSIS structure
-const uint32_t binSize = 5;             //FFTSAMPLEFREQ / FFTLEN;
-//PC
-const uint32_t SAMPLERATE = 32;
-const uint32_t SAMPBUFFLEN = 6250;
 
 const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013
 
@@ -154,18 +102,7 @@ float Mags[FFTLEN] = { 0.0 };
 
 float zcd_thresh = 0.2;
 
-//Variables for harmonic distortion calculation
-float thd_v; //Total Harmonic Voltage Distortion
-float thd_i; //Total Harmonic Current Distortion
-float pwr_f; //Power Frequency
-float phaseangle;
-float distortion_factor; //Distortion factor for the pf-calculation
-
-bool grouping_en = true;
-float thdg_v = 0.0F;
-float thdsg_v = 0.0F;
-float thdg_i = 0.0F;
-float thdsg_i = 0.0F;
+struct PowerQuality pwr_qual = { 0 };
 
 bool inCalibration = false;
 uint8_t dataLogging = 0;
@@ -204,36 +141,31 @@ void touchHandler_Default() {
       currPage++;
     } else if (touchMode == 1 && currPage > 0)
       currPage--;
-
+    #ifdef DEBUG
     SerialUSB1.printf("CurrPage: %d. Sampling: %d\n", currPage, sampling);
+    #endif
   }
   touchSensor.clearInterrupt();
-
+  calcFFT = false;
   switch (currPage) {
-  case DISP_FFT_VOLT: {
+  case DISP_FFT_VOLT:
     calcFFT = true;
-    startSamplingFFT();
-    break;}
-  case DISP_FFT_CURRENT: {
-    calcFFT = true;
-    startSamplingFFT();
-    break;}
-  case DISP_VOLT: {
-    calcFFT = false;
     ACSchip.activateVoltageAveraging();
-    break;}
-  case DISP_CURRENT: {
-    calcFFT = false;
+    startSamplingFFT();
+    break;
+  case DISP_FFT_CURRENT:
+    calcFFT = true;
+    ACSchip.activateVoltageAveraging();
+    startSamplingFFT();
+    break;
+  case DISP_VOLT:
+    ACSchip.activateVoltageAveraging();
+    break;
+  case DISP_CURRENT:
     ACSchip.activateCurrentAveraging();
     break;
-  }
-  }
-  if (currPage == DISP_FFT_CURRENT || DISP_FFT_VOLT) {
-    calcFFT = true;
-    startSamplingFFT();
-  } else {
-    calcFFT = false;
-    stopSampling();
+  case DISP_POWER:
+    ACSchip.activateVoltageAveraging();
   }
   touchHappened = false;
 }
@@ -244,9 +176,9 @@ void touchHandler_DataLogging() {
 
   if (multitouch) { //Both buttons pressed at the same time
     switch (menuOption) {
-    case 0: {SerialUSB1.println("Menu0 chosen"); break;}
-    case 1: {SerialUSB1.println("Menu1 chosen"); break;}
-    case 2: {SerialUSB1.println("Menu2 chosen"); break;}
+    case 0: {logger.Log_RMS_VandC(true); break;}
+    case 1: {SerialUSB1.println("Menu1 chosen"); File a; logger.printDirectory(a, 0); break;}
+    case 2: {SerialUSB1.println("Menu2 chosen"); logger.LogValues(); break;}
     case 3: {SerialUSB1.println("Menu3 chosen"); break;}
     case 4: {SerialUSB1.println("Menu4 chosen"); break;}
     case 5: {dataLogging = false; SerialUSB1.println("Exit DataLogging"); break;}
@@ -276,45 +208,47 @@ void setup() {
   Serial.begin(115200);     //Main transmit port
   SerialUSB1.begin(115200); //Debug and status port
 
-  pinMode(SD_CS_PIN, OUTPUT);
-
   #ifdef DEBUG
   while (!SerialUSB1) {
     yield();
   }
   #endif
-
+  printDebug("Initializing ACS-Chip");
   while (!ACSchip.init()) {
     SerialUSB1.println("Unable to init ACS-Chip");
     delay(500);
   }
+  printDebug("ACS-Chip initialized");
 
   //Display Initialization
+  printDebug("Initializing Display");
   #ifdef INIT_DISP
   while (!display.begin(0x3D)) {
     SerialUSB1.println("Unable to initialize OLED");
     delay(500);
   }
-  SerialUSB1.println("Display initialized");
   display.setTextSize(2);
   display.clearDisplay();
   display.display();
+  printDebug("Display initialized");
   #endif
 
+  printDebug("Initializing SD Card");
   #ifdef INIT_SDCARD
-  while (!SD.begin(SD_CS_PIN)) {
+  while (!logger.init()) {
     SerialUSB1.println("SD initialization failed!");
     delay(500);
   }
-  SerialUSB1.println("SD initialization done.");
+  printDebug("SD-Card initialized");
   #endif
 
+  printDebug("Touch Initialized");
   #ifdef INIT_TOUCH
   while (!touchSensor.begin()) {
     SerialUSB1.println("Unable to connect to TouchSensor");
     delay(500);
   }
-  SerialUSB1.println("Touch Sensor initialized");
+  printDebug("Touch Sensor initialized");
   //Touch-PIN configure
   pinMode(CAP_IRQ, INPUT); //Pulled up in hardware
   attachInterrupt(digitalPinToInterrupt(CAP_IRQ), touch_IRQ, FALLING);
@@ -357,13 +291,11 @@ void loop() {
   if (samplingDone) {
     if (runmode == 1) //Transmit all voltage samples
     {
-      for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
-        Serial.printf("%u\n", vCodeBuffer[i]);
+      transmitIntegerSamples(&Serial, vCodeBuffer, SAMPBUFFLEN);
       startSamplingPC();
     } else if (runmode == 2) //Transmit all current samples
     {
-      for (uint16_t i = 0; i < SAMPBUFFLEN; i++)
-        Serial.printf("%u\n", iCodeBuffer[i]);
+      transmitIntegerSamples(&Serial, iCodeBuffer, SAMPBUFFLEN);
       startSamplingPC();
     } else if (runmode == 3) //Transmit alls current and voltage samples
     {
@@ -376,38 +308,38 @@ void loop() {
       arm_cfft_radix4_f32(&fftInstance, vSamps);     //In-Place FFT
       float angle_v = atan2(vSamps[21], vSamps[20]); //Angle from pure spectrum
       arm_cmplx_mag_f32(vSamps, Mags, FFTLEN);       //Calculate Magnitudes
-      thd_v = calcTHD(17);                           //Calculate Total Harmonic Distortion
-      if (grouping_en)                               //If grouping enabled, calculate Harmonic Groups
+      pwr_qual.thd_v = calcTHD(Mags, 17, BINSIZE);                           //Calculate Total Harmonic Distortion
+      if (pwr_qual.grouping_en)                               //If grouping enabled, calculate Harmonic Groups
       {
         float fgroups[17] = { 0 };
-        thdg_v = calcTHDG(Mags, fgroups, 17);
-        thdsg_v = calcTHDSG(Mags, fgroups, 17);
+        pwr_qual.thdg_v = calcTHDG(Mags, fgroups, 17);
+        pwr_qual.thdsg_v = calcTHDSG(Mags, fgroups, 17);
       }
 
       if (currPage == DISP_FFT_VOLT)
-        displayFFT();
+        displayFFT(&display, Mags, currPage);
 
       //FFT for Current samples
       arm_cfft_radix4_f32(&fftInstance, iSamps); //In-Place FFT
       float angle_i = atan2(iSamps[21], iSamps[20]);
-      phaseangle = (angle_v - angle_i) * (180 / PI);
+      pwr_qual.phaseangle = (angle_v - angle_i) * (180.0F / PI);
 
       arm_cmplx_mag_f32(iSamps, Mags, FFTLEN);
-      float base_mag_i = Mags[binSize * 2] / (2 * FFTLEN);
+      float base_mag_i = Mags[BINSIZE * 2] / (2 * FFTLEN);
       float tmp = ACSchip.readIRMS(0); // base in a
       //tmp = ConvertUnsignedFixedPoint(tmp, 15, 17);
-      distortion_factor = (tmp / base_mag_i);
+      pwr_qual.distortion_factor = (tmp / base_mag_i);
       //SerialUSB1.printf("Dist.-fact:\n Base:%f\n irms:%f\n dist_fact:%f\n", base_mag_i, tmp, distortion_factor);
-      thd_i = calcTHD(17);
-      if (grouping_en) //If grouping enabled, calculate Harmonic Groups
+      pwr_qual.thd_i = calcTHD(Mags, 17, BINSIZE);
+      if (pwr_qual.grouping_en) //If grouping enabled, calculate Harmonic Groups
       {
         float fgroups[17] = { 0 };
-        thdg_i = calcTHDG(Mags, fgroups, 17);
-        thdsg_i = calcTHDSG(Mags, fgroups, 17);
+        pwr_qual.thdg_i = calcTHDG(Mags, fgroups, 17);
+        pwr_qual.thdsg_i = calcTHDSG(Mags, fgroups, 17);
       }
 
       if (currPage == DISP_FFT_CURRENT)
-        displayFFT();
+        displayFFT(&display, Mags, currPage);
 
       startSamplingFFT();
 
@@ -420,8 +352,6 @@ void loop() {
     SerialUSB1.println("Updating Display");
     #endif
     updateDisplay();
-    //ACSchip.printEEPROMContent(&SerialUSB1, 0x0B);
-    //ACSchip.printEEPROMContent(&SerialUSB1, 0x1B);
     displayTime = newTime;
 
   }
@@ -467,17 +397,10 @@ int detectCurrentZC(uint8_t orient) {
   return 0;
 }
 
-uint32_t getMaxValueIndex(float values[], uint32_t arrlen) {
-  uint32_t maxIndex = 0;
-  float maxVal = values[maxIndex];
-
-  for (uint32_t i = 0; i < arrlen; i++) {
-    if (values[i] > maxVal) {
-      maxIndex = i;
-      maxVal = values[i];
-    }
+void transmitIntegerSamples(usb_serial_class* sBus, uint32_t* samples, uint32_t length) {
+  for (uint32_t i = 0; i < length; i++) {
+    sBus->printf("%u\n");
   }
-  return maxIndex;
 }
 
 /*
@@ -602,7 +525,7 @@ void writeAddress() {
 void measureFrequency() {
   //Frequency-Measurement won't work
   if (!voltage_detected) {
-    pwr_f = 0.0F;
+    pwr_qual.pwr_f = 0.0F;
     return;
   }
 
@@ -626,7 +549,7 @@ void measureFrequency() {
   }
   secTime = micros(); //Save the time of the second rising edge
   uint32_t ti = secTime - firstTime;
-  pwr_f = 1.0F / (ti * 1000000.0F); //Convert time to seconds and calculate Frequency
+  pwr_qual.pwr_f = 1.0F / (ti * 1000000.0F); //Convert time to seconds and calculate Frequency
 }
 
 /*
@@ -659,7 +582,8 @@ void calibrateRMS() {
 }
 
 /*
-  Receives a command String with chosen delimiters. Can read up to MAX_RECEIVABLE chars
+  Receives a command String with delimiters. Can read up to MAX_RECEIVABLE chars
+
 */
 void receiveCommandString() {
   char stdel = '<';              //Start delimiter
@@ -828,8 +752,6 @@ boolean detectVoltage() {
 Stream vcodes and icodes to Serial. Helper
 */
 void streamSampling() {
-  //vcodes = ACSchip.readVCODE_RAW();
-  //icodes = ACSchip.readICODE_RAW();
   Serial.printf("%u,%u\n", ACSchip.readVCODE_RAW(), ACSchip.readICODE_RAW());
 }
 /*
@@ -851,151 +773,125 @@ void getCommand() {
   if (Serial.available() > 0) {
     char c1 = Serial.read(); //First letter
     char c2 = Serial.read(); //Second letter
+    #ifdef DEBUG
     SerialUSB1.printf("Got %d, %d", c1, c2);
-
-    if (c1 == 't') //Time Sync
-    {
-      timeSync();
-    }
-    //All voltage related measurements
-    else if (c1 == 'v') //**************************Voltage*****************************
-    {
-      if (c2 == 'r') //RMS Voltage
-      {
-        // v_rms = ACSchip.readVRMS_RAW(0);
-        Serial.printf("%u\n", ACSchip.readVRMS_RAW(0));
-      } else if (c2 == 's') //RMS Voltage per second
-      {
-        // vrms_sec = ACSchip.readVRMS_RAW(1); //15-bit FP, 15 frac
-        Serial.printf("%u\n", ACSchip.readVRMS_RAW(1));           //("%f\n", ConvertUnsignedFixedPoint(vrms_sec, 15, 15)*RATED_VOLTAGE);
-      } else if (c2 == 'm') //RMS Voltage per minute
-      {
-        // vrms_min = ACSchip.readVRMS_RAW(2); //15-bit FP, 15 frac
-        Serial.printf("%u\n", ACSchip.readVRMS_RAW(2));           //("%f\n", ConvertUnsignedFixedPoint(vrms_min, 15, 15)*RATED_VOLTAGE);
-      } else if (c2 == 'c') //Start Voltage Sampling
-      {
+    #endif
+    switch (c1) {
+    case 't': timeSync(); break;
+    case 'v': { //**************************Voltage*****************************
+      switch (c2) {
+      case 'r': //RMS Voltage
+        Serial.printf("%u\n", ACSchip.readVRMS_RAW(0));break;
+      case 's': //RMS Voltage per second
+        Serial.printf("%u\n", ACSchip.readVRMS_RAW(1)); break;
+      case 'm': //RMS Voltage per minute
+        Serial.printf("%u\n", ACSchip.readVRMS_RAW(2)); break;
+      case 'c'://Start Voltage Sampling
         connectComputer(true);
         startSamplingPC();
-        runmode = 1;
-      } else if (c2 == 'd') //Single Voltage Value
-      {
-        // vcodes = ACSchip.readVCODE_RAW();
-        Serial.printf("%u\n", ACSchip.readVCODE_RAW());
+        runmode = 1; break;
+      case 'd'://Single Voltage Value
+        Serial.printf("%u\n", ACSchip.readVCODE_RAW()); break;
       }
-    } else if (c1 == 'i') //**************************Current*****************************
-    {                   //All current related measurements
-      if (c2 == 'r')    //RMS Current
-      {
-        //i_rms = ACSchip.readIRMS_RAW(0);
-        Serial.printf("%u\n", ACSchip.readIRMS_RAW(0));
-      } else if (c2 == 's') //RMS Current per second
-      {
-        //irms_sec = ACSchip.readIRMS_RAW(1); //15-bit FP, 14 frac
-        Serial.printf("%u\n", ACSchip.readIRMS_RAW(1));
-      } else if (c2 == 'm') //RMS Current per minute
-      {
-        //irms_min = ACSchip.readIRMS_RAW(2); //15-bit FP, 14 frac
-        Serial.printf("%u\n", ACSchip.readIRMS_RAW(2));
-      } else if (c2 == 'c') //Start Current Sampling
-      {
-        startSamplingPC();
-        runmode = 2;
-      } else if (c2 == 'd') //Single Current Value
-      {
-        //icodes = ACSchip.readICODE_RAW();
-        Serial.printf("%u\n", ACSchip.readICODE_RAW());
+      break;}
+    case 'i': {//**************************Current*****************************
+      switch (c2) {            //All current related measurements
+      case 'r':
+        Serial.printf("%u\n", ACSchip.readIRMS_RAW(0)); break;
+      case 's':
+        Serial.printf("%u\n", ACSchip.readIRMS_RAW(1)); break;
+      case 'm':
+        Serial.printf("%u\n", ACSchip.readIRMS_RAW(2)); break;
+      case 'c':
+        startSamplingPC(); runmode = 2; break;
+      case 'd':
+        Serial.printf("%u\n", ACSchip.readICODE_RAW()); break;
       }
-    } else if (c1 == 'p') //**************************Power*****************************
-    {                   //All power related measurements
-      if (c2 == 'a')    //Active Power Value
-      {
-        //pActive = ACSchip.readPACTIVE_RAW(0);
-        Serial.printf("%u\n", ACSchip.readPACTIVE_RAW(0));
-      } else if (c2 == 's') //Active Power per second
-      {
-        //pact_sec = ACSchip.readPACTIVE_RAW(1);
-        Serial.printf("%u\n", ACSchip.readPACTIVE_RAW(1));
-      } else if (c2 == 'm') //Active Power per minute
-      {
-        //pact_min = ACSchip.readPACTIVE_RAW(2);
-        Serial.printf("%u\n", ACSchip.readPACTIVE_RAW(2));
-      } else if (c2 == 'p') //Apparent Power
-      {
-        //pApp = ACSchip.readPAPP_RAW();
-        Serial.printf("%u\n", ACSchip.readPAPP_RAW());
-      } else if (c2 == 'i') //Reactive Power
-      {
-        //pImag = ACSchip.readPIMAG_RAW();
-        Serial.printf("%u\n", ACSchip.readPIMAG_RAW());
-      } else if (c2 == 'f') //Power Factor
-      {
-        //pfact = ACSchip.readPOWERFACTOR_RAW();
-        Serial.printf("%u\n", ACSchip.readPOWERFACTOR_RAW());
-      } else if (c2 == 't') //Instant Power Value
-      {
-        //pinst = ACSchip.readPINST_RAW();
-        Serial.printf("%u\n", ACSchip.readPINST_RAW());
-      } else if (c2 == 'c') //Power codes
-      {
+      break;}
+    case 'p': {//**************************Power*****************************
+      switch (c2) {       //All power related measurements
+        if (c2 == 'a')    //Active Power Value
+      case 'a':
+        Serial.printf("%u\n", ACSchip.readPACTIVE_RAW(0)); break;
+      case 's': //Active Power per second
+        Serial.printf("%u\n", ACSchip.readPACTIVE_RAW(1)); break;
+      case 'm': //Active Power per minute
+        Serial.printf("%u\n", ACSchip.readPACTIVE_RAW(2)); break;
+      case 'p': //Apparent Power
+        Serial.printf("%u\n", ACSchip.readPAPP_RAW()); break;
+      case 'i': //Reactive Power
+        Serial.printf("%u\n", ACSchip.readPIMAG_RAW()); break;
+      case 'f': //Power Factor
+        Serial.printf("%u\n", ACSchip.readPOWERFACTOR_RAW()); break;
+      case 't':
+        Serial.printf("%u\n", ACSchip.readPINST_RAW()); break;
+      case 'c':
         powerSampling = true;
         startSamplingPC();
         runmode = 1; //Voltage or active power
+        break;
       }
-    } else if (c1 == 's') //**************************Status*****************************
-    {                   //All status Values
-      uint32_t flags = ACSchip.readFlags();
-      if (c2 == 'n') {
-        //numptsout = ACSchip.readNumOfPoints(); //Unsigned 9-bit, number of points for RMS Calculation
-        Serial.printf("%u\n", ACSchip.readNumOfPoints());
-      } else if (c2 == 'z')
-        Serial.printf("%u\n", (flags & 0x1)); //Zero crossing
-      else if (c2 == 'f')
-        Serial.printf("%u\n", ((flags >> 6) & 0x1)); //pospf, 0: Generation, 1: Consumption
-      else if (c2 == 'a')
-        Serial.printf("%u\n", ((flags >> 5) & 0x1)); //posangle
-      else if (c2 == 'u')
-        Serial.printf("%u\n", ((flags >> 4) & 0x1)); //undervol
-      else if (c2 == 'o')
-        Serial.printf("%u\n", ((flags >> 3) & 0x1)); //overvol
-      else if (c2 == 'l')
-        Serial.printf("%u\n", ((flags >> 2) & 0x1)); //faultlatched
-      else if (c2 == 'c')
-        Serial.printf("%u\n", ((flags >> 1) & 0x1)); //faultout
-    } else if (c1 == 'w') //Write to an EEPROM register
-    {
-      if (c2 == 'w')
-        writeEEPROMValue();
-      else if (c2 == 'a')
-        writeAddress();
-      else if (c2 == 'e') //Writes a value to the MCU-EEPROM
-        MCU_write(0, 0, true);
-      else if (c2 == 'c') //Write calibration
-        calibrateRMS();
-    } else if (c1 == 'b') { //Print Both Code Values
-      if (c2 == 'c') {
+      break;}
+    case 's': {//**************************Status*****************************
+      switch (c2) {
+      case 'n':
+        Serial.printf("%u\n", ACSchip.readNumOfPoints()); break;
+      case 'z':
+        Serial.printf("%u\n", (ACSchip.readFlags() & 0x1)); break;//Zero crossing
+      case 'f':
+        Serial.printf("%u\n", ((ACSchip.readFlags() >> 6) & 0x1)); break;//pospf, 0: Generation, 1: Consumption
+      case 'a':
+        Serial.printf("%u\n", ((ACSchip.readFlags() >> 5) & 0x1)); break;//posangle
+      case 'u':
+        Serial.printf("%u\n", ((ACSchip.readFlags() >> 4) & 0x1)); break;//undervol
+      case 'o':
+        Serial.printf("%u\n", ((ACSchip.readFlags() >> 3) & 0x1)); break;//overvol
+      case 'l':
+        Serial.printf("%u\n", ((ACSchip.readFlags() >> 2) & 0x1)); break;//faultlatched
+      case 'c':
+        Serial.printf("%u\n", ((ACSchip.readFlags() >> 1) & 0x1)); break;//faultout
+      }
+      break;}
+    case 'w': {//Write to an EEPROM register
+      switch (c2) {
+      case 'w':
+        writeEEPROMValue(); break;
+      case 'a':
+        writeAddress(); break;
+      case 'e':
+        MCU_write(0, 0, true); break;
+      case 'c':
+        calibrateRMS(); break;
+      }
+      break;}
+    case 'b': {
+      switch (c2) { //Print Both Code Values
+      case 'c':
         connectComputer(true);
         startSamplingPC();
-        runmode = 3;
-      } else if (c2 == 'f') {
+        runmode = 3; break;
+      case 'f':
         calcFFT = true;
-        startSamplingFFT();
-      } else if (c2 == 't') {
+        startSamplingFFT();break;
+      case 't':
         SerialUSB1.println("Started Stream");
-        startStreamingPC();
+        startStreamingPC();break;
       }
-    } else if (c1 == 'e') //EEPROM-Operations
-    {
-      if (c2 == 'v') {
-        readSingleEEPROM();
-      } else if (c2 == 'a') //Reads the content of a memory address
-        readAddress();
-      else if (c2 == 'e') { //Reads the MCU-EEPROM and sends the return
+      break;}
+    case 'e': {//EEPROM-Operations
+      switch (c2) {
+      case 'v':
+        readSingleEEPROM(); break;
+      case 'a': //Reads the content of a memory address
+        readAddress(); break;
+      case 'e': { //Reads the MCU-EEPROM and sends the return
         uint32_t data = MCU_read(0, true);
-        Serial.printf("%u\n", data);
-      } else if (c2 == 's') // EEPROM "status"
-        sendCalibration();
-    } else if (c1 == 'x') //Set to Idle Mode
-    {
+        Serial.printf("%u\n", data); break;}
+      case 's': // EEPROM "status"
+        sendCalibration(); break;
+      }
+      break;}
+    case 'x': { //Set to Idle Mode
       stopSampling();
       sampling = false;
       samplingDone = false;
@@ -1004,59 +900,25 @@ void getCommand() {
       runmode = 0;
       inCalibration = false;
       calcFFT = false;
-    } else if (c1 == 'c') //Computer Commands
-    {
-      if (c2 == 'c') //Connect
-      {
-        connectComputer(true);
-      } else if (c2 == 'd') //Disconnect
-      {
-        connectComputer(false);
-      } else if (c2 == 'i') { //Connection test
+      break;}
+    case 'c': {//Computer Commands
+      switch (c2) {
+      case 'c': //Connect
+        connectComputer(true); break;
+      case 'd': //Disconnect
+        connectComputer(false); break;
+      case 'i': //Connection test
         Serial.print("tconn\n");
-        connectComputer(true);
-      } else if (c2 == 'a') { //Calibration mode
+        connectComputer(true); break;
+      case 'a': //Calibration mode
         inCalibration = !inCalibration;
         Serial.printf("%u\n", inCalibration);
-        toCalibrationMode();
-      } else if (c2 == 'f') {
-        digitalWrite(ACS_EN, LOW);
-        delay(200);
-        File root = SD.open("/");
-        printDirectory(root, 0);
-        digitalWrite(ACS_EN, HIGH);
+        toCalibrationMode(); break;
       }
-    }
-  }
-}
-
-void printDirectory(File dir, int numSpaces) {
-  while (true) {
-    File entry = dir.openNextFile();
-    if (!entry) {
-      Serial.println("** no more files **");
-      break;
-    }
-    printSpaces(numSpaces);
-    Serial.print(entry.name());
-    if (entry.isDirectory()) {
-      Serial.println("/");
-      printDirectory(entry, numSpaces + 2);
-    } else {
-      // files have sizes, directories do not
-      printSpaces(48 - numSpaces - strlen(entry.name()));
-      Serial.print("  ");
-      Serial.println(entry.size(), DEC);
-    }
-    entry.close();
-  }
-}
-
-void printSpaces(int num) {
-  for (int i = 0; i < num; i++) {
-    Serial.print(" ");
-  }
-}
+      break;}
+    } //End switch(c1)
+  } //End if(Serial)
+}//End getCommand()
 
 ////////////////////////////////////////////////////////////////////////////////
 // Helper Functions
@@ -1083,16 +945,16 @@ void connectComputer(bool conn) {
 
 void toCalibrationMode() {
   uint32_t currTime = millis();
-  uint32_t calTime = millis();
-  uint32_t timeDisplay = millis();
-  print_time_in_min_sec(300000);
+  uint32_t calTime = currTime;
+  uint32_t timeDisplay = currTime;
+  print_time_in_min_sec(&display, 5, 10, 300000);
   SerialUSB1.print("CalibrationMode:");
   SerialUSB1.print(inCalibration);
   SerialUSB1.println();
-  while (inCalibration && currTime < calTime + 300000) { //5 min calibration time
+  while (inCalibration && (currTime < calTime + 300000)) { //5 min calibration time
     currTime = millis();
     if (currTime > timeDisplay + 10000) {
-      print_time_in_min_sec(300000 - currTime);
+      print_time_in_min_sec(&display, 5, 10, (300000 - currTime));
       timeDisplay = currTime;
     }
     if (currTime > checkTime + wdTimeout - 5000) {
@@ -1106,60 +968,6 @@ void toCalibrationMode() {
   updateDisplay();
 }
 
-//Conversion helpers
-/*
- * Convert an unsigned bitfield which is right justified, into a floating point number
- *
- *    data        - the bitfield to be converted
- *    binaryPoint - the binary point (the bit to the left of the binary point)
- *    width       - the width of the bitfield
- *    returns     - the floating point number
- */
-float ConvertUnsignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width) {
-  uint32_t mask;
-
-  if (width == 32) {
-    mask = 0xFFFFFFFF;
-  } else {
-    mask = (1UL << width) - 1UL;
-  }
-
-  return (float)(inputValue & mask) / (float)(1L << binaryPoint);
-}
-
-/*
- * Convert a signed bitfield which is right justified, into a floating point number
- *
- *    data        - the bitfield to be sign extended then converted
- *    binaryPoint - the binary point (the bit to the left of the binary point)
- *    width       - the width of the bitfield
- *    returns     - the floating point number
- */
-float ConvertSignedFixedPoint(uint32_t inputValue, uint16_t binaryPoint, uint16_t width) {
-  int32_t signedValue = SignExtendBitfield(inputValue, width);
-  return (float)signedValue / (float)(1L << binaryPoint);
-}
-
-/*
- * Sign extend a bitfield which if right justified
- *
- *    data        - the bitfield to be sign extended
- *    width       - the width of the bitfield
- *    returns     - the sign extended bitfield
- */
-int32_t SignExtendBitfield(uint32_t data, uint16_t width) {
-  // If the bitfield is the width of the variable, don't bother trying to sign extend (it already is)
-  if (width == 32) {
-    return (int32_t)data;
-  }
-
-  int32_t x = (int32_t)data;
-  int32_t mask = 1L << (width - 1);
-
-  x = x & ((1 << width) - 1); // make sure the upper bits are zero
-
-  return (int32_t)((x ^ mask) - mask);
-}
 
 void timeSync() {
   unsigned long pctime;
@@ -1178,205 +986,28 @@ void timeSync() {
   }
 }
 
-/* prints the current time on the display
-*/
-void printTime() {
-  display.printf("%02d:%02d:%02d\n", hour(), minute(), second());
-}
-
-void print_time_in_min_sec(uint32_t ms) {
-  if (ms < 60000) { //60s remaining
-    int secs = (int)(ms / 1000) + 1;
-    display.clearDisplay();
-    display.setCursor(5, 10);
-    display.printf("Calibration Mode\n");
-    display.printf("%u s remaining", secs);
-    display.display();
-  } else {
-    int mins = (int)(ms / 60000);
-    display.clearDisplay();
-    display.setCursor(5, 10);
-    display.printf("Calibration Mode\n");
-    display.printf("%u min remaining", mins);
-    display.display();
-  }
-}
 void sendCalibration() {
   Serial.printf("%u,%u\n", MCU_read(VRMS_cal_address, false), MCU_read(IRMS_cal_address, false));
   SerialUSB1.println("Sent Calibration");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Calculation Functions
-////////////////////////////////////////////////////////////////////////////////
-
-float calcTHD(uint8_t order) {
-  uint32_t s = 50 / binSize; //50Hz base frequency
-  float thd = 0;
-  float base = Mags[s];
-  for (uint32_t i = s * 2; i < order * s; i += s) {
-    thd += pow(Mags[i] / base, 2);
-  }
-  thd = sqrt(thd) * 100;
-
-  return thd;
-}
-
-float calcTHDG(float frequencies[], float output[], int order) {
-  float groupvalue = 0;
-  for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
-  {
-    groupvalue = pow(frequencies[i * 10 - 5], 2) / 2; //Add 1/2*Value offset by 5 to the left
-    float sumvalue = 0;
-    for (int k = -4; k < 5; k++) //Add all values from -4 to 4 around the harmonic order
-    {
-      sumvalue += pow(frequencies[i * 10 + k], 2);
-    }
-    groupvalue += sumvalue + pow(Mags[i * 10 + 5], 2) / 2; //Add 1/2*Value offset by 5 to the right
-    float result = sqrt(groupvalue);
-    output[i] = result; //Save it in output array
-  }
-  //Calculate THDG
-  float thdg = 0;
-  float base = output[1];
-  for (uint8_t i = 2; i <= order; i++) {
-    thdg += pow(output[i] / base, 2);
-  }
-  thdg = sqrt(thdg) * 100;
-  return thdg;
-}
-float calcTHDSG(float frequencies[], float output[], int order) {
-  for (uint8_t i = 1; i <= order; i++) //Loop over Harmonic Orders
-  {
-    float sumvalue = 0;
-    for (int k = -1; k < 2; k++) //Add neighbor values
-    {
-      sumvalue += pow(frequencies[i * 10 + k], 2);
-    }
-    float result = sqrt(sumvalue);
-    output[i] = result;
-  }
-  //Calculate THDSG
-  float thdsg = 0;
-  float base = output[1];
-  for (uint8_t i = 2; i <= order; i++) {
-    thdsg += pow(output[i] / base, 2);
-  }
-  thdsg = sqrt(thdsg) * 100;
-  return thdsg;
 }
 
 /*
   Updates the Display with values
 */
 void updateDisplay() {
+  #ifdef INIT_DISP
   if (currPage == DISP_FFT_VOLT || currPage == DISP_FFT_CURRENT || computerConnected)
     return;
 
   if (dataLogging)
-    displayDataLogMenu();
+    displayDataLogMenu(&display, menuOption, optionNames);
   else
-    displayDefault();
-
+    displayDefault(&display, &ACSchip, currPage, &pwr_qual);
+  #endif
 }
 
-void displayDefault() {
-  #ifdef INIT_DISP
-  float temp;
-  display.clearDisplay();
-  display.setCursor(0, 0); //Cursor Position top-left
-  //Updates to the display
-  if (currPage == DISP_CURRENT) {
-    display.printf("Current\n");
-    temp = ACSchip.readIRMS(1);
-    if (temp < 1.0F)
-      display.printf("Irms:\n%.2f mA\n", temp * 1000.0F);
-    else
-      display.printf("Irms:\n%.2f A\n", temp);
-  } else if (currPage == DISP_VOLT) {
-    display.printf("Voltage\n");
-    temp = ACSchip.readVRMS(0);
-    if (temp < 1.0F)
-      display.printf("Vrms:\n%.2f mV\n", temp * 1000.0F);
-    else
-      display.printf("Vrms:\n%.2f V\n", temp);
-  } else if (!voltage_detected) {
-    display.printf("Voltage \ntoo low:\n%2f", ACSchip.readVRMS(0));
-    display.display();
-    return;
-  } else if (currPage == DISP_THD_V) {
-    if (!voltage_detected) {
-      display.printf("Voltage \ntoo low:\n%2f", ACSchip.readVRMS(1));
-    } else {
-      if (currPage == 0) {
-        display.printf("RMS values");
-        temp = ACSchip.readVRMS(1);
-        if (temp < 1)
-          display.printf("Vrms:\n%.2f mV\n", temp * 1000.0F);
-        else
-          display.printf("Vrms:\n%.2f V\n", temp);
-        temp = ACSchip.readIRMS(1);
-        if (temp < 1)
-          display.printf("Irms:\n%.2f mA\n", temp * 1000.0F);
-        else
-          display.printf("Irms:\n%.2f A\n", temp);
-
-        display.printf("Harmonics(V)\n");
-        display.printf("THD:\n%.2f %%\n", thd_v);
-        if (grouping_en) {
-          display.printf("THDG: \n%.2f%%\n", thdg_v);
-          display.printf("THDSG: \n%.2f%%\n", thdsg_v);
-        }
-      } else if (currPage == DISP_THD_I) {
-        display.printf("Harmonics(I)\n");
-        display.printf("THD:\n%.2f%%\n", thd_i);
-        if (grouping_en) {
-          display.printf("THDG:\n%.2f%%\n", thdg_i);
-          display.printf("THDSG:\n%.2f%%\n", thdsg_i);
-        }
-      } else if (currPage == DISP_POWER) {
-
-        display.printf("Act. Power \n%.2f W\n", ACSchip.readPACTIVE(1) * MAXPOWER);
-        display.printf("P-Factor: \n%.2f\n", ACSchip.readPOWERFACTOR() * distortion_factor);
-        display.printf("Phase Angle\n: %.2fdeg\n", phaseangle);
-      }
-      display.display();
-      #endif
-    }
-  }
-}
-void displayFFT() {
-  #ifdef INIT_DISP
-  uint32_t starttime = micros();
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  if (currPage == DISP_FFT_VOLT)
-    display.print("Voltage FFT 0-640 Hz");
-  else
-    display.print("Current-FFT 0-640 Hz");
-  //Number of Magnitudes: 4096, with binSize = 5
-  float maxMag = Mags[getMaxValueIndex(Mags, 4096)];
-  float pix_per_volt = (128 - 20) / maxMag;
-  for (int i = 0; i < 128; i++) {
-    uint16_t mag = round(Mags[i] * pix_per_volt); //Rounded value
-    display.drawLine(i, DISP_HEIGHT, i, DISP_WIDTH - 10 - mag, SSD1327_WHITE);
-  }
-  display.display();
+void printDebug(const char* obj) {
   #ifdef DEBUG
-  SerialUSB1.printf("Display update Time: %u\n", micros() - starttime);
-  #endif
-  #endif
-}
-
-void displayDataLogMenu() {
-  #ifdef INIT_DISP
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  for (uint8_t i = 0; i < MENU_OPTIONS; i++) {
-    if (menuOption == i)
-      display.print(">");
-    display.printf("%s\n", optionNames[i]);
-  }
-  display.display();
+  SerialUSB1.println(obj);
   #endif
 }
