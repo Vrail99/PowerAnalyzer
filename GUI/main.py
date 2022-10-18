@@ -388,7 +388,7 @@ class mainWindow(tk.Tk):
             print("Closing program")
             self.sBus.writeString('x')
             time.sleep(1)
-            self.sBus.writeString('bf')
+            # self.sBus.writeString('bf')
             self.sBus.closePort()
 
         self.destroy()

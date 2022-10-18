@@ -61,14 +61,14 @@ class SerialBus:
                 self.writeString('x')
                 time.sleep(0.25)
                 self.writeString('ci')
-                answer = self.linereader.readline().decode(
-                    'utf-8').rstrip()  # Remove any control-characters
+                answer = self.linereader.readline().decode('utf-8').rstrip()  # Remove any control-characters
                 if (answer != "tconn"):
                     print("Error connecting")
                     self.sBus.close()
                     return 0
                 else:
                     print("Connected")
+                    print("Port Open:", self.sBus.is_open)
 
             except SerialTimeoutException as e:
                 tkinter.messagebox.showinfo("Info",
@@ -91,7 +91,7 @@ class SerialBus:
         """Closes the port, if possible"""
         try:
             self.writeString('cd')
-            self.writeString('bf')
+            # self.writeString('bf') // Not necessary
             self.sBus.close()
         except:
             print("Error! Port cannot be closed")
@@ -158,7 +158,7 @@ class SerialBus:
         req = 'ea<' + str(adr) + '>'
         self.writeString(req)
         val = self.readLine()
-        return val
+        return int(val)
 
     def readLine(self, dec: str = 'utf-8') -> str:
         """Reads a line from the serial bus.
@@ -223,6 +223,7 @@ class SerialBus:
         string -- the requested string"""
         if (self.deviceOpen()):
             try:
+                print("Writing", string)
                 self.sBus.write(string.encode())
             except SerialTimeoutException:
                 print(
