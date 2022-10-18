@@ -177,8 +177,8 @@ void touchHandler_DataLogging() {
   if (multitouch) { //Both buttons pressed at the same time
     switch (menuOption) {
     case 0: {logger.Log_RMS_VandC(true); break;}
-    case 1: {SerialUSB1.println("Menu1 chosen"); break;}
-    case 2: {SerialUSB1.println("Menu2 chosen"); break;}
+    case 1: {SerialUSB1.println("Menu1 chosen"); File a; logger.printDirectory(a, 0); break;}
+    case 2: {SerialUSB1.println("Menu2 chosen"); logger.LogValues(); break;}
     case 3: {SerialUSB1.println("Menu3 chosen"); break;}
     case 4: {SerialUSB1.println("Menu4 chosen"); break;}
     case 5: {dataLogging = false; SerialUSB1.println("Exit DataLogging"); break;}
@@ -208,43 +208,47 @@ void setup() {
   Serial.begin(115200);     //Main transmit port
   SerialUSB1.begin(115200); //Debug and status port
 
-  pinMode(SD_CS_PIN, OUTPUT);
-
   #ifdef DEBUG
   while (!SerialUSB1) {
     yield();
   }
   #endif
+  printDebug("Initializing ACS-Chip");
   while (!ACSchip.init()) {
     SerialUSB1.println("Unable to init ACS-Chip");
     delay(500);
   }
+  printDebug("ACS-Chip initialized");
+
   //Display Initialization
+  printDebug("Initializing Display");
   #ifdef INIT_DISP
   while (!display.begin(0x3D)) {
     SerialUSB1.println("Unable to initialize OLED");
     delay(500);
   }
-  SerialUSB1.println("Display initialized");
   display.setTextSize(2);
   display.clearDisplay();
   display.display();
+  printDebug("Display initialized");
   #endif
 
+  printDebug("Initializing SD Card");
   #ifdef INIT_SDCARD
-  while (!SD.begin(SD_CS_PIN)) {
+  while (!logger.init()) {
     SerialUSB1.println("SD initialization failed!");
     delay(500);
   }
-  SerialUSB1.println("SD initialization done.");
+  printDebug("SD-Card initialized");
   #endif
 
+  printDebug("Touch Initialized");
   #ifdef INIT_TOUCH
   while (!touchSensor.begin()) {
     SerialUSB1.println("Unable to connect to TouchSensor");
     delay(500);
   }
-  SerialUSB1.println("Touch Sensor initialized");
+  printDebug("Touch Sensor initialized");
   //Touch-PIN configure
   pinMode(CAP_IRQ, INPUT); //Pulled up in hardware
   attachInterrupt(digitalPinToInterrupt(CAP_IRQ), touch_IRQ, FALLING);
@@ -999,5 +1003,11 @@ void updateDisplay() {
     displayDataLogMenu(&display, menuOption, optionNames);
   else
     displayDefault(&display, &ACSchip, currPage, &pwr_qual);
+  #endif
+}
+
+void printDebug(const char* obj) {
+  #ifdef DEBUG
+  SerialUSB1.println(obj);
   #endif
 }

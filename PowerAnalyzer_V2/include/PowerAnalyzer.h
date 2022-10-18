@@ -6,10 +6,10 @@
 #include "ACS71020.h"         //Include of the Chip-Library
 
 //Uncomment for Debug messages on Serial Port 3
-//#define DEBUG
+#define DEBUG
 
 //Uncomment for SD init
-//#define INIT_SDCARD
+#define INIT_SDCARD
 
 //Uncomment for Display init
 #define INIT_DISP

@@ -22,7 +22,6 @@ void displayDefault(Adafruit_SSD1327* display, ACS71020* ACSchip, uint8_t currPa
         else
             display->printf("Vrms:\n%.2f V\n", temp);
         temp = ACSchip->readPACTIVE(1) * 5490.0;
-        display->printf("Power\n%.2f W\n", temp);
         break;}
     case DISP_THD_V: {
         if (false) { //!voltage_detected
@@ -43,9 +42,11 @@ void displayDefault(Adafruit_SSD1327* display, ACS71020* ACSchip, uint8_t currPa
             display->printf("THDSG:\n%.2f%%\n", pwr_qual->thdsg_i);
         } break;
     } case DISP_POWER: {
-        display->printf("Act. Power \n%.2f W\n", ACSchip->readPACTIVE(1) * MAXPOWER);
+        temp = ACSchip->readPACTIVE(1);
+        display->printf("Act. Power \n%.2f W\n", temp * MAXPOWER);
         display->printf("P-Factor: \n%.2f\n", ACSchip->readPOWERFACTOR() * pwr_qual->distortion_factor);
         display->printf("Phase\n: %.2fdeg\n", pwr_qual->phaseangle);
+        display->printf("Wh: %2f\n", ACSchip->addEnergy(temp, 1000.0F));
         break;}
     }
     display->display();
