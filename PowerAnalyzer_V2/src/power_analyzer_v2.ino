@@ -178,7 +178,7 @@ void touchHandler_DataLogging() {
     switch (menuOption) {
     case 0: {logger.Log_RMS_VandC(true); break;}
     case 1: {SerialUSB1.println("Menu1 chosen"); File a; logger.printDirectory(a, 0); break;}
-    case 2: {SerialUSB1.println("Menu2 chosen"); logger.LogValues(); break;}
+    case 2: {SerialUSB1.println("Menu2 chosen"); logger.LogAll(); break;}
     case 3: {SerialUSB1.println("Menu3 chosen"); break;}
     case 4: {SerialUSB1.println("Menu4 chosen"); break;}
     case 5: {dataLogging = false; SerialUSB1.println("Exit DataLogging"); break;}
