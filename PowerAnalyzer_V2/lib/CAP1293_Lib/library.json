@@ -1,0 +1,32 @@
+{
+	"name": "RAKwireless CAP1293 Touch Pad library",
+	"version": "1.0.2",
+	"keywords": [
+		"touch",
+		"cap1293",
+		"RAKWireless",
+		"WisBlock",
+		"RAK14002"
+	],
+	"description": "RAKWireless library for the RAK14002 module with the CAP1293 sense IC",
+	"frameworks": [
+		"arduino"
+	],
+	"platforms": [
+		"*"
+	],
+	"license": "MIT",
+	"authors": [
+		{
+			"email": "bernd.giesecke@rakwireless.com",
+			"url": "https://rakwireless.com",
+			"maintainer": true,
+			"name": "Bernd Giesecke"
+		}
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/RAKWireless/RAK14002-CAP1293-Library"
+	},
+	"homepage": "https://rakwireless.com"
+}
