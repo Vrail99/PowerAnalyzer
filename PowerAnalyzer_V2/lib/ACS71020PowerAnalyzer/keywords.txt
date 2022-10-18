@@ -1,0 +1,12 @@
+ACS71020 	KEYWORD1
+SDhandlerPA	KEYWORD1
+
+readReg		KEYWORD2
+writeReg	KEYWORD2
+writeEEPROM	KEYWORD2
+readEEPROM	KEYWORD2
+ConvertUnsignedFixedPoint	KEYWORD2
+ConvertSignedFixedPoint		KEYWORD2
+
+readAllFiles	KEYWORD2
+checkBegin	KEYWORD2
